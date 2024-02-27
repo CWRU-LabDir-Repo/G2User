@@ -17,9 +17,10 @@ Composite tool to recover from UBLOX hardware reset
 Author: JC Gibbons
 Date        Version     Author  Comments
 02-11-24    Ver 1.00    N8OBJ   Initial start of UBLOX Utility program
+02-14-24    Ver 2.00    KC3UAX  Added message to save all configs
 
 """
-#import the GPIO and time package
+# import the GPIO and time package
 import RPi.GPIO as GPIO
 import time
 from serial import Serial
@@ -43,7 +44,7 @@ time.sleep(1.0)
 print('Releasing UBLOX Reset -> 1')
 GPIO.output(26,1) # Release GPSRESET
 
-#GPIO.cleanup()
+# GPIO.cleanup()
 time.sleep(1.0)
 print ('waiting 1.0 sec...\n')
 
@@ -82,8 +83,18 @@ time.sleep(1.0)
 print ('waiting 1.0 sec...\n')
 
 ## setup UBLOX pulse settings
-message0 = UBXMessage("CFG", "CFG-TP5", POLL, payload=b"\x00")
+# message0 = UBXMessage("CFG", "CFG-TP5", POLL, payload=b"\x00")
 message1 = UBXMessage("CFG", "CFG-TP5", POLL, payload=b"\x01")
+
+# Message to Save all Settings to Battery Backed RAM, and flash
+saveMessage = UBXMessage(
+    "CFG",
+    "CFG-CFG",
+    SET,
+    saveMask=b"\x1f\x1f\x00\x00",  # save everything
+    devBBR=1,  # save to battery-backed RAM
+    devFlash=1,  # save to flash
+)
 
 port = "/dev/ttyS0"
 timeout = 0.1
@@ -91,18 +102,24 @@ baudrate = 115200
 
 with Serial(port, baudrate, timeout=timeout) as serial:
     ubr = UBXReader(serial)
-    
-    print("Polling @115.2 KB for TIMEPULSE setting from the UBLOX GPS module...")
-    serial.write(message0.serialize())
-    print("Command sent...\n")
-    (raw_data, parsed_data) = ubr.read()
-    print('Retrieved data:\n',parsed_data)
-    
+
+    # print("Polling @115.2 KB for TIMEPULSE setting from the UBLOX GPS module...")
+    # serial.write(message0.serialize())
+    # print("Command sent...\n")
+    # (raw_data, parsed_data) = ubr.read()
+    # print('Retrieved data:\n',parsed_data)
+
     print("\nPolling for TIMEPULSE2 setting from the UBLOX GPS module...")
     serial.write(message1.serialize())
     print("Command sent...\n")
     (raw_data, parsed_data) = ubr.read()
     print('Retrieved data:\n',parsed_data)
 
-print('Initialization Completed\n\n')
+    print("\nSaving all current configurations...")
+    serial.write(saveMessage.serialize())
+    print("Command sent...\n")
+    (raw_data, parsed_data) = ubr.read()
+    print('Retrieved data:\n',parsed_data)
 
+
+print('Initialization Completed\n\n')
