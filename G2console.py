@@ -10,7 +10,7 @@ from datetime import datetime
 from collections import deque
 from serial import Serial
 from pynmeagps import NMEAReader
-#from gpsdclient import GPSDClient
+from gpsdclient import GPSDClient
 
 
 # Constants for modes
