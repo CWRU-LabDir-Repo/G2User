@@ -39,9 +39,9 @@ class DailyMinMaxCollection:
             self.collection.append(hour_data)
         else:
             self.collection[-1]["current"] = current_value
-            if current_value > self.collection[-1]["max"]:
+            if abs(current_value) > abs(self.collection[-1]["max"]):
                 self.collection[-1]["max"] = current_value
-            if current_value < self.collection[-1]["min"]:
+            if abs(current_value) < abs(self.collection[-1]["min"]):
                 self.collection[-1]["min"] = current_value
 
     def get_daily_max(self, mode):
@@ -49,7 +49,7 @@ class DailyMinMaxCollection:
             return None
         
         if mode == MODE_DAILY:
-            return max(hour_data["max"] for hour_data in self.collection)
+            return max(((hour_data["max"], abs(hour_data["max"])) for hour_data in self.collection), key=lambda x: x[1])[0]
         else:
             return self.collection[-1]["max"]
 
@@ -58,7 +58,7 @@ class DailyMinMaxCollection:
             return None
 
         if mode == MODE_DAILY:
-            return min(hour_data["min"] for hour_data in self.collection)
+            return min(((hour_data["min"], abs(hour_data["min"])) for hour_data in self.collection), key=lambda x: x[1])[0]
         else:
             return self.collection[-1]["min"]
         
@@ -176,7 +176,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, "Grape2 Console v9.2")
+    saddstr(stdscr, 0, 22, "Grape2 Console v10.2")
     nextrow = 1
     return nextrow
 
@@ -200,24 +200,13 @@ def print_version(stdscr, row, data):
 
 def print_datetime_widget(stdscr, row):
     saddstr(stdscr, row + 1, 0, "GPS Date/Time")
-    saddstr(stdscr, row + 2, 0, "Displayed Data")
-    return row + 3
+    return row + 2
 
 
 def print_gps_time(stdscr, row):
     sys_datetime = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    saddstr(stdscr, row, 22, sys_datetime)
-
-
-def print_data_time(stdscr, row, data):
-    dt_object = datetime.strptime(data["ts"][1:15], "%Y%m%d%H%M%S")
-    gps_datetime = dt_object.strftime("%m/%d/%Y %H:%M:%S")
-    saddstr(stdscr, row, 22, gps_datetime)
-
-
-def print_datetime(stdscr, row, data):
-    print_gps_time(stdscr, row + 1)
-    print_data_time(stdscr, row + 2, data)
+    saddstr(stdscr, row+1, 22, sys_datetime)
+    return row+2
 
 
 def print_gps_widget(stdscr, row):
@@ -227,7 +216,7 @@ def print_gps_widget(stdscr, row):
     saddstr(stdscr, row + 1, 36, "PDOP")
     saddstr(stdscr, row + 4, 17, "Latitude")
     saddstr(stdscr, row + 4, 32, "Longitude")
-    saddstr(stdscr, row + 4, 45, "Elevation(M)")
+    saddstr(stdscr, row + 4, 45, "Elevation(m)")
     return row + 6
 
 def print_gps(stdscr, row, data):
@@ -366,9 +355,9 @@ def print_mag(stdscr, row):
             curr_str_value = "{0:.3f}".format(mag[i].get_current())
         else:
             curr_str_value = ""
-        saddstr(stdscr, row + 3, 16 + 15 * i, max_str_value.rjust(7))
-        saddstr(stdscr, row + 4, 16 + 15 * i, curr_str_value.rjust(7))
-        saddstr(stdscr, row + 5, 16 + 15 * i, min_str_value.rjust(7))
+        saddstr(stdscr, row + 3, 16 + 15 * i, max_str_value.rjust(8))
+        saddstr(stdscr, row + 4, 16 + 15 * i, curr_str_value.rjust(8))
+        saddstr(stdscr, row + 5, 16 + 15 * i, min_str_value.rjust(8))
     if mode == MODE_DAILY:
         saddstr(stdscr, row + 3, 0, "MAX 24 hr")
         saddstr(stdscr, row + 5, 0, "MIN 24 hr")
@@ -389,24 +378,23 @@ def update_ui(stdscr):
     end_of_freq = print_freq_widget(stdscr, end_of_ampl)
     end_of_temp = print_temp_widget(stdscr, end_of_freq)
     end_of_mag = print_mag_widget(stdscr, end_of_temp)
-    saddstr(stdscr, end_of_mag + 2, 6, "<ctrl-p> = toggle for 1Hr/24Hr Min/Max   ")
+    saddstr(stdscr, end_of_mag + 2, 6, "<ctrl-p> = toggle for 1Hr/24Hr Min/Max            ")
 
     program_name = "datactrlr"
     while not is_process_running(program_name):
-        saddstr(stdscr, end_of_mag + 1, 6, "<r> = start Data Controller             ")
+        saddstr(stdscr, end_of_mag + 1, 6, "<r> = start Data Controller                        ")
         stdscr.refresh()
 
         char = stdscr.getch()
         if char != curses.ERR and char == 114:  # statmon detected r
-            saddstr(stdscr, end_of_mag + 1, 6, "Starting the Data Controller...          ")
+            saddstr(stdscr, end_of_mag + 1, 6, "Starting the Data Controller...                ")
             stdscr.refresh()
 
-            dclog = "/home/pi/G2DATA/Slogs/dc.log"
             datactrlr = subprocess.Popen(
-                ["sudo", "/home/pi/pico/Grape2/PICOCode/picorun/datactrlr"],
+                ["sudo", "/home/pi/G2User/datactrlr"],
                 stdin=subprocess.PIPE,
-                stdout=open(dclog, "a"),
-                stderr=subprocess.STDOUT,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
             )
 
             datactrlr.stdin.write(b"r\n")
@@ -419,7 +407,7 @@ def update_ui(stdscr):
             stdscr,
             end_of_mag + 1,
             6,
-            "Data Controller runs in another terminal",
+            "Data Controller is running in another terminal",
         )
         stdscr.refresh()
     else:
@@ -427,7 +415,7 @@ def update_ui(stdscr):
             stdscr,
             end_of_mag + 1,
             6,
-            "<ctrl-x> = terminate Data Controller    ",
+            "<ctrl-x> = terminate Data Controller              ",
         )
 
     data_reader_thread = threading.Thread(target=data_reader)
@@ -438,7 +426,7 @@ def update_ui(stdscr):
         while data_reader_thread.is_alive():
             if last_data != "":
                 print_version(stdscr, end_of_title, last_data)
-                print_datetime(stdscr, end_of_version, last_data)
+                print_gps_time(stdscr, end_of_version)
                 print_gps(stdscr, end_of_datetime, last_data)
                 print_beacon(stdscr, end_of_gps, last_data)
                 print_ampl(stdscr, end_of_beacon)
@@ -456,7 +444,7 @@ def update_ui(stdscr):
                             stdscr,
                             end_of_mag + 1,
                             6,
-                            "Stopping the Data Controller...           ",
+                            "Stopping the Data Controller...                    ",
                         )
                         stdscr.refresh()
                         datactrlr.stdin.write(b"q\n")
@@ -469,7 +457,7 @@ def update_ui(stdscr):
             stdscr,
             end_of_mag + 1,
             6,
-            "Terminating the Console...              ",
+            "Terminating the Console...                         ",
         )
         stdscr.refresh()
     finally:
