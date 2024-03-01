@@ -6,6 +6,7 @@
 # 08-08-2021 V1.01 - fixed clksync filename pointer (to clksyncfile)
 # 10-17-2021 V1.00 - just logs start time of system assuming already synced
 # 02-14-2022 V1.00 - tweaked lenght of wait to 5 sec 
+# 02-29-2024 V1.01 - Version for eventual Grape 2 usage once GPS daemon is running
 
 import time
 import shutil
@@ -13,7 +14,7 @@ import sys
 import os
 
 
-print ('Running logstart.py Ver 1.00')
+print ('Running logstart.py Ver 1.01')
 
 ########################################################################
 # Variable inits
@@ -118,9 +119,9 @@ if (TSync == 2):   #  clock sync sequence assumed  - log it
     CSF.close # close the file
     CSF.flush() # flush the buffer (I'm impatient!)
 
-shutil.chown(clksyncfile, user='n8obj', group='n8obj')  # set the owner to pi (only in python3)
+shutil.chown(clksyncfile, user='pi', group='pi')  # set the owner to pi (only in python3)
 os.chmod(clksyncfile, mode=0o664)   # set the permissions to 664 (only in python3)
 
-print ('logstart.py exiting gracefully')
+print ('logstart.py Ver 1.01 exiting gracefully')
 
 sys.exit(0)

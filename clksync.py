@@ -4,8 +4,8 @@
 # Written by John C Gibbons N8OBJ
 # 05-09-2021 V1.00 - Started Clock sync time logging to file clksync.log
 # 08-08-2021 V1.01 - fixed clksync filename pointer (to clksyncfile)
+# 02-29-2024 V1.02 - Version for Grape 2 boot logging w/o GPS daemon running
 
-import RPi.GPIO as GPIO
 import time
 import shutil
 import sys
@@ -25,24 +25,6 @@ lstsec = now[5]
 oldsec = lstsec
 oldmin = lstmin
 oldhr = lsthr
-########################################################################
-########################################################################
-# set up GPIO
-
-GPIO.setmode(GPIO.BCM)
-GPIO.setwarnings(False)
-#
-# GPIO24 controls the Blue SYNC LED On Ver 1.00 of the Stratum 1 GPS Clock Board (Pin 18)
-#GPIO.setup(24, GPIO.OUT)
-
-# GPIO25 controls the Blue SYNC LED On Ver 1.01 of the Stratum 1 GPS Clock Board (Pin 22)
-GPIO.setup(25, GPIO.OUT)
-
-
-#GPIO.output(24,0)  # Sync LED Off Ver 1.00 of the Stratum 1 GPS Clock Board
-
-GPIO.output(25,0)  # Sync LED Off Ver 1.01 of the Stratum 1 GPS Clock Board
-#print ('SYNC LED Off')
 ########################################################################
 
 # Failsafe loop for clock sync
@@ -127,10 +109,6 @@ if (TSync == 1):   # clock has successfully synced - log it
     CSF.write('Synced in {:03d} Seconds - Clock Sync Time: {:02d}/{:02d}/{:04d} - {:02d}:{:02d}:{:02d} {:3s}\n' .format(numsec,mth, day, yr, hr, min, sec, TZName))
     CSF.close # close the file
     CSF.flush() # flush the buffer (I'm impatient!)
-    # turn on SYNC LED
-    #GPIO.output(24,1)  # Sync LED On Ver 1.00 of the Stratum 1 GPS Clock Board
-    GPIO.output(25,1)  # Sync LED On Ver 1.01 of the Stratum 1 GPS Clock Board
-    print ('Good Time SYNC - SYNC LED On')
 
 if (TSync == 2):   #  clock sysnc sequence has aborted  - log it
     # save sync time to file
