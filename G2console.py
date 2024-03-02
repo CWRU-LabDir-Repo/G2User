@@ -176,7 +176,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, "Grape2 Console v10.2")
+    saddstr(stdscr, 0, 22, "Grape2 Console v10.3")
     nextrow = 1
     return nextrow
 
@@ -355,9 +355,9 @@ def print_mag(stdscr, row):
             curr_str_value = "{0:.3f}".format(mag[i].get_current())
         else:
             curr_str_value = ""
-        saddstr(stdscr, row + 3, 16 + 15 * i, max_str_value.rjust(8))
-        saddstr(stdscr, row + 4, 16 + 15 * i, curr_str_value.rjust(8))
-        saddstr(stdscr, row + 5, 16 + 15 * i, min_str_value.rjust(8))
+        saddstr(stdscr, row + 3, 15 + 15 * i, max_str_value.rjust(8))
+        saddstr(stdscr, row + 4, 15 + 15 * i, curr_str_value.rjust(8))
+        saddstr(stdscr, row + 5, 15 + 15 * i, min_str_value.rjust(8))
     if mode == MODE_DAILY:
         saddstr(stdscr, row + 3, 0, "MAX 24 hr")
         saddstr(stdscr, row + 5, 0, "MIN 24 hr")

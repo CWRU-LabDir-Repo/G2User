@@ -18,6 +18,7 @@ Author: JC Gibbons
 Date        Version     Author  Comments
 02-11-24    Ver 1.00    N8OBJ   Initial start of UBLOX Utility program
 02-14-24    Ver 2.00    KC3UAX  Added message to save all configs
+02-23-24    Ver 2.10    KC3UAX  Fix bug where config isn't actually commmitted
 
 """
 # import the GPIO and time package
@@ -97,7 +98,7 @@ saveMessage = UBXMessage(
 )
 
 port = "/dev/ttyS0"
-timeout = 0.1
+timeout = 3
 baudrate = 115200
 
 with Serial(port, baudrate, timeout=timeout) as serial:
