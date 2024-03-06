@@ -27,11 +27,13 @@
                    FW rev numbers to Header info, check fix/pdop numbers for GPS save
 02-05-24  Ver 2.18 Added Zero Cal to sequence of tasks to complete, added FW version of PSWSsetup to header files
                    Added system date/time to GPS fix acquisition into header files
+02-29-24  Ver 2.19 Add autodetect of Magnetometer - changed header labels for Vp to Vrms
+03-05-24  Ver 2.20 Finished autodetect of Magnetometer, semaphore file creation, G2DATA setup, added magdata ver to header files
 @author JCGibbons N8OBJ
 """
 
 # Define Software version of this code (so you don't have to search for it in the code!)
-SWVersion = '2.18'
+SWVersion = '2.20'
 
 import os
 from os import path
@@ -41,6 +43,11 @@ import maidenhead as mh
 import subprocess
 from subprocess import Popen, PIPE
 from datetime import datetime
+import sys
+sys.path.append('.')
+import os.path
+import pigpio
+from smbus2 import SMBus
 
 # Setup GPS port operation
 from serial import Serial
@@ -78,6 +85,16 @@ print('********************************************************************\n\n'
 #Check for main base Directory
 print('Checking / Creating PSWS Directory Structure\n')
 print('Home Path = ' + homepath)
+
+################################################################
+################################################################
+# make sure /home/pi/G2DATA SSD drive is mounted
+G2DATAPath = '/home/pi/G2DATA/'
+
+#os.chmod(G2DATAPath, mode=0o774)   # set the permissions to 764
+
+################################################################
+################################################################
 
 ################################################################
 # make sure PSWS path exists - if not, create it with correct permissions
@@ -272,6 +289,7 @@ os.remove(fwoutput_filename)
 
 datactrlr_version = None
 picorun_version = None
+magdata_version = '0.0.1'
 
 for line in reversed(lines):
     if "data controller" in line.lower():
@@ -286,6 +304,7 @@ for line in reversed(lines):
 print('\nCurrent Firmware Revs:')
 print(f"Data Controller Version: {datactrlr_version}")
 print(f"Picorun Version: {picorun_version}")
+print(f"magdata Version: {magdata_version}")
 
 ################################################################
 # Perform Zero cal of A/D Channels
@@ -293,16 +312,61 @@ print(f"Picorun Version: {picorun_version}")
 
 print("\nPerforming A/D Zero's calibration...")
 
-from subprocess import Popen, PIPE
+#from subprocess import Popen, PIPE
 
-# print("Starting datactrlr...")
+print("Starting PICO datactrlr...")
 datactrlr = Popen(["sudo", "/home/pi/pico/Grape2/PICOCode/picorun/datactrlr"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
-# print("Executing the Z command...")
+print("Executing the Z command...")
 stdout, stderr = datactrlr.communicate(b"z\nq\n")
-# print("Data Controller Output:", stdout.decode())
+#print("Data Controller Output:", stdout.decode())
 
 print("A/D Zero's calibration completed")
+
+################################################################
+# Check for existance of RM3100 Magnetometer on I^2C bus(1)
+################################################################
+
+print("\nLooking for RM3100 Magnetometer on I^2C SMBus(1)")
+
+MagTmpPath="/home/pi/PSWS/Scmd/magtmp"
+HexMagAddr="20"
+VERSION_EXPECTED = 0x22
+I2C_BUS = 1
+RM3100_ADDRESS = 0x20
+RM3100Addr = '0x20'
+RM3100I2C_REVID = 0x36
+i2cDeviceHandle = 0
+
+bus = SMBus(1)
+print('Attempting to read I^2C SMBus(1) at base address',RM3100Addr, 'Looking for REVID of RM3100')
+# attempt to read the address on I^2C bus
+try:
+    rv = bus.read_byte_data(RM3100_ADDRESS, RM3100I2C_REVID)
+except Exception as e:
+   print('Error reading I2C bus for RM3100: ', str(e))
+   rv = 00
+
+# got good read of register - check value
+if(rv == VERSION_EXPECTED):
+    # I^2C bus read worked at specified address and value retrieved is correct
+    print('Received correct REVID of 0x22 -- RM3100 is present on I^2C bus')
+    bus.close()
+    print('RM3100 found - turning on magdata collection')
+    # create semaphore flag file /home/pi/PSWS/Scmd/magtmp and turn on data collection
+    with open(MagTmpPath, 'w') as MagTmpFile:
+        MagTmpFile.write(HexMagAddr) #write base address of Magnetometer
+        MagTmpFile.close()
+    os.chmod(MagTmpPath, mode=0o764)   # set the permissions to 764
+
+else:
+    # got error reading bus, not Magnetometer - shut off data collection
+    print("RM3100 not found - turning off magdata collection")
+    # remove semaphore flag file /home/pi/PSWS/Scmd/magtmp
+    if os.path.exists(MagTmpPath):
+        #print("Delating semaphore file magtmp")
+        os.remove(MagTmpPath) # turn off magtmp data collection
+#exit(0)
 
 ################################################################
 # check for existance of node number
@@ -577,6 +641,7 @@ if (NewLLE == 'n'):
     #Now write Lat Long Elv to a new file
     with open(LLEPath, 'w') as LLEFile:
         # create new Lat Long Elv Numbers
+        # Lat = 4.6 digits and Long = 3.6 digits @@@@
         LatLonElv = str(GPS_lat) + ',' + str(GPS_lon) + ',' + str(GPS_elv)
         LLEFile.write(LatLonElv) #write default LAt Long Elev
         LLEFile.close()
@@ -1213,11 +1278,11 @@ with open(PICOSetPath, 'w') as PICOSetFile:
 #    PICOSetFile.write('F408\n') #write PICO test Freq = 5.000000 MHz - WWV5
     PICOSetFile.write('VP\n') #write VP command to report picorun version string
     # Added for debug support 
-    PICOSetFile.write('XP0\n') #write PICO diag mode off
-#    PICOSetFile.write('XP1\n') #write PICO diag mode on
-    PICOSetFile.write('XR0\n') #write RasPi diag mode 1/2 off
+#    PICOSetFile.write('XP0\n') #write PICO diag mode off
+    PICOSetFile.write('XP1\n') #write PICO diag mode on
+#    PICOSetFile.write('XR0\n') #write RasPi diag mode 1/2 off
 #    PICOSetFile.write('XR1\n') #write RasPi diag mode 1 on
-#    PICOSetFile.write('XR2\n') #write RasPi diag mode 2 on
+    PICOSetFile.write('XR2\n') #write RasPi diag mode 2 on
     PICOSetFile.close()
 os.chmod(PICOSetPath, mode=0o764)   # set the permissions to 764
 print('\nCreating PICO Initialization File = ' + PICOSetPath + '\n')
@@ -1273,6 +1338,7 @@ print('# System Info              ' + NewSysInf)
 print('# RFDeckSN, LogicCtrlrSN   ' + SerNum)
 print(f"# Data Controller Version  {datactrlr_version}")
 print(f"# Picorun Version          {picorun_version}")
+print(f"# magdata Version          {magdata_version}")
 print('# PSWSsetup Version        ' + SWVersion)
 print('#')
 print('# Beacon 1 Now Decoded     ' + Beacon1)
@@ -1311,6 +1377,7 @@ with open(PSWSInfoPath, 'w') as PSWSInfoFile:
     PSWSInfoFile.write('# RFDeckSN, LogicCtrlrSN   ' + SerNum + '\n') #write data line
     PSWSInfoFile.write(f"# Data Controller Version  {datactrlr_version}" + '\n')
     PSWSInfoFile.write(f"# Picorun Version          {picorun_version}" + '\n')
+    PSWSInfoFile.write(f"# magdata Version          {magdata_version}" + '\n')
     PSWSInfoFile.write('# PSWSsetup Version        ' + SWVersion + '\n')
     PSWSInfoFile.write('#\n') #write data line
     PSWSInfoFile.write('# Beacon 1 Now Decoded     ' + Beacon1 + '\n') #write data line
@@ -1353,12 +1420,13 @@ with open(R1HdrPth, 'w') as R1HdrFile:
     R1HdrFile.write('# RFDeckSN, LogicCtrlrSN   ' + SerNum + '\n') #write data line
     R1HdrFile.write(f"# Data Controller Version  {datactrlr_version}" + '\n')
     R1HdrFile.write(f"# Picorun Version          {picorun_version}" + '\n')
+    R1HdrFile.write(f"# magdata Version          {magdata_version}" + '\n')
     R1HdrFile.write('# PSWSsetup Version        ' + SWVersion + '\n')
     R1HdrFile.write('#\n') #write data line
     R1HdrFile.write('# Beacon 1 Now Decoded     ' + Beacon1 + '\n') #write data line
     R1HdrFile.write('#\n') #write data line
     R1HdrFile.write('######################################################\n') #write data line
-    R1HdrFile.write('UTC,Freq,Vpk\n') #write column info line
+    R1HdrFile.write('UTC,Freq,Vrms\n') #write column info line
     R1HdrFile.close() # save file and update permissions
 
 os.chmod(R1HdrPth, mode=0o764)   # set the permissions to 764
@@ -1389,12 +1457,13 @@ with open(R2HdrPth, 'w') as R2HdrFile:
     R2HdrFile.write('# RFDeckSN, LogicCtrlrSN   ' + SerNum + '\n') #write data line
     R2HdrFile.write(f"# Data Controller Version  {datactrlr_version}" + '\n')
     R2HdrFile.write(f"# Picorun Version          {picorun_version}" + '\n')
+    R2HdrFile.write(f"# magdata Version          {magdata_version}" + '\n')
     R2HdrFile.write('# PSWSsetup Version        ' + SWVersion + '\n')
     R2HdrFile.write('#\n') #write data line
     R2HdrFile.write('# Beacon 2 Now Decoded     ' + Beacon2 + '\n') #write data line
     R2HdrFile.write('#\n') #write data line
     R2HdrFile.write('######################################################\n') #write data line
-    R2HdrFile.write('UTC,Freq,Vpk\n') #write column info line
+    R2HdrFile.write('UTC,Freq,Vrms\n') #write column info line
     R2HdrFile.close() # save file and update permissions
 os.chmod(R2HdrPth, mode=0o764)   # set the permissions to 764
 print('Saved file = ' + R2HdrPth)
@@ -1424,12 +1493,13 @@ with open(R3HdrPth, 'w') as R3HdrFile:
     R3HdrFile.write('# RFDeckSN, LogicCtrlrSN   ' + SerNum + '\n') #write data line
     R3HdrFile.write(f"# Data Controller Version  {datactrlr_version}" + '\n')
     R3HdrFile.write(f"# Picorun Version          {picorun_version}" + '\n')
+    R3HdrFile.write(f"# magdata Version          {magdata_version}" + '\n')
     R3HdrFile.write('# PSWSsetup Version        ' + SWVersion + '\n')
     R3HdrFile.write('#\n') #write data line
     R3HdrFile.write('# Beacon 3 Now Decoded     ' + Beacon3 + '\n') #write data line
     R3HdrFile.write('#\n') #write data line
     R3HdrFile.write('######################################################\n') #write data line
-    R3HdrFile.write('UTC,Freq,Vpk\n') #write column info line
+    R3HdrFile.write('UTC,Freq,Vrms\n') #write column info line
     R3HdrFile.close() # save file and update permissions
 
 os.chmod(R3HdrPth, mode=0o764)   # set the permissions to 764
@@ -1458,10 +1528,11 @@ with open(MAGTMPHdrPth, 'w') as MAGTMPHdrFile:
     MAGTMPHdrFile.write('# RFDeckSN, LogicCtrlrSN   ' + SerNum + '\n') #write data line
     MAGTMPHdrFile.write(f"# Data Controller Version  {datactrlr_version}" + '\n')
     MAGTMPHdrFile.write(f"# Picorun Version          {picorun_version}" + '\n')
+    MAGTMPHdrFile.write(f"# magdata Version          {magdata_version}" + '\n')
     MAGTMPHdrFile.write('# PSWSsetup Version        ' + SWVersion + '\n')
     MAGTMPHdrFile.write('#\n') #write data line
     MAGTMPHdrFile.write('######################################################\n') #write data line
-    MAGTMPHdrFile.write('UTC,SysTemp C,MagTemp C,Mx(nT),My(nT),Mz(nT)\n') #write column info line
+    MAGTMPHdrFile.write('UTC,SysTemp C,RemoteTemp C,Mx(nT),My(nT),Mz(nT)\n') #write column info line
     MAGTMPHdrFile.close() # save file and update permissions
 
 os.chmod(MAGTMPHdrPth, mode=0o764)   # set the permissions to 764
