@@ -29,11 +29,12 @@
                    Added system date/time to GPS fix acquisition into header files
 02-29-24  Ver 2.19 Add autodetect of Magnetometer - changed header labels for Vp to Vrms
 03-05-24  Ver 2.20 Finished autodetect of Magnetometer, semaphore file creation, G2DATA setup, added magdata ver to header files
+03-06-24  Ver 2.21 Fixed format of Lat / Long numbers, magdata to ver 0.0.2
 @author JCGibbons N8OBJ
 """
 
 # Define Software version of this code (so you don't have to search for it in the code!)
-SWVersion = '2.20'
+SWVersion = '2.21'
 
 import os
 from os import path
@@ -289,7 +290,7 @@ os.remove(fwoutput_filename)
 
 datactrlr_version = None
 picorun_version = None
-magdata_version = '0.0.1'
+magdata_version = '0.0.2'  # set manually for now
 
 for line in reversed(lines):
     if "data controller" in line.lower():
@@ -642,7 +643,8 @@ if (NewLLE == 'n'):
     with open(LLEPath, 'w') as LLEFile:
         # create new Lat Long Elv Numbers
         # Lat = 4.6 digits and Long = 3.6 digits @@@@
-        LatLonElv = str(GPS_lat) + ',' + str(GPS_lon) + ',' + str(GPS_elv)
+        #LatLonElv = str(GPS_lat) + ',' + str(GPS_lon) + ',' + str(GPS_elv)
+        LatLonElv = f"{GPS_lat:.6f}".rjust(11) + "," + f"{GPS_lon:.6f}".rjust(10) + f",{GPS_elv}"
         LLEFile.write(LatLonElv) #write default LAt Long Elev
         LLEFile.close()
         os.chmod(LLEPath, mode=0o764)   # set the permissions to 764
