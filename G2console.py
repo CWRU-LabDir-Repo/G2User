@@ -108,7 +108,7 @@ def gps_reader():
         port = '/dev/ttyS0'
         baud_rate = 115200
 
-        with Serial(port, baud_rate, timeout=3) as stream:
+        with Serial(port, baud_rate, timeout=None) as stream:
             nmr = NMEAReader(stream, quitonerror=0)
             while not exited:
                 try:
@@ -125,6 +125,7 @@ def gps_reader():
                     log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
                     log.write(" -> ")
                     log.write(str(e))
+                    log.flush()
     else:
         with GPSDClient() as client:
             while not exited:
@@ -177,7 +178,10 @@ def parse_json(line):
 
 def print_title(stdscr):
     saddstr(stdscr, 0, 22, "Grape2 Console v10.3")
-    nextrow = 1
+    saddstr(stdscr, 1, 24, "Node: ")
+    with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
+        saddstr(stdscr, 1, 30, file.readline().strip())
+    nextrow = 2
     return nextrow
 
 
@@ -214,6 +218,9 @@ def print_gps_widget(stdscr, row):
     saddstr(stdscr, row + 1, 18, "Fix")
     saddstr(stdscr, row + 1, 27, "#Sats")
     saddstr(stdscr, row + 1, 36, "PDOP")
+    saddstr(stdscr, row + 4, 0, "RF Gain")
+    with open("/home/pi/PSWS/Sinfo/RFGain.txt") as file:
+        saddstr(stdscr, row + 5, 2, file.readline().strip())
     saddstr(stdscr, row + 4, 17, "Latitude")
     saddstr(stdscr, row + 4, 32, "Longitude")
     saddstr(stdscr, row + 4, 45, "Elevation(m)")
@@ -479,7 +486,7 @@ def main(stdscr):
 if __name__ == "__main__":
     pipe_path = "/home/pi/PSWS/Sstat/datamon.fifo"
     log_path = "/home/pi/G2DATA/Slogs/"
-    log_file = "statmon.log"
+    log_file = "console.log"
     if not os.path.exists(log_path):
         os.makedirs(log_path)
     log = open(os.path.join(log_path, log_file), "a")
