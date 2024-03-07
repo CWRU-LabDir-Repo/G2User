@@ -30,11 +30,12 @@
 02-29-24  Ver 2.19 Add autodetect of Magnetometer - changed header labels for Vp to Vrms
 03-05-24  Ver 2.20 Finished autodetect of Magnetometer, semaphore file creation, G2DATA setup, added magdata ver to header files
 03-06-24  Ver 2.21 Fixed format of Lat / Long numbers, magdata to ver 0.0.2
+03-07-24  Ver 2.22 Fixed running datactrlr from ~/G2User/
 @author JCGibbons N8OBJ
 """
 
 # Define Software version of this code (so you don't have to search for it in the code!)
-SWVersion = '2.21'
+SWVersion = '2.22'
 
 import os
 from os import path
@@ -275,7 +276,7 @@ with open(fwinput_filename, "w") as fwfile:
 
 # Start the data controller and redirect input from q.txt, output to out.txt
 subprocess.run(
-    ["sudo", "/home/pi/pico/Grape2/PICOCode/picorun/datactrlr"],
+    ["sudo", "/home/pi/G2User/datactrlr"],
     stdin=open(fwinput_filename, "r"),
     stdout=open(fwoutput_filename, "w"),
 )
