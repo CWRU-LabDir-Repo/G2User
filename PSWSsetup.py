@@ -36,7 +36,7 @@
 """
 
 # Define Software version of this code (so you don't have to search for it in the code!)
-SWVersion = '2.22'
+SWVersion = '2.23'
 
 import os
 from os import path
