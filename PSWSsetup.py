@@ -30,7 +30,8 @@
 02-29-24  Ver 2.19 Add autodetect of Magnetometer - changed header labels for Vp to Vrms
 03-05-24  Ver 2.20 Finished autodetect of Magnetometer, semaphore file creation, G2DATA setup, added magdata ver to header files
 03-06-24  Ver 2.21 Fixed format of Lat / Long numbers, magdata to ver 0.0.2
-03-07-24  Ver 2.22 Fixed running datactrlr from ~/G2User/
+03-07-24  Ver 2.22 Fixed running datactrlr from ~/G2User/ issue
+03-08-24  Ver 2.23 Fixed another running datactrlr from ~/G2User/ issue
 @author JCGibbons N8OBJ
 """
 
@@ -317,7 +318,7 @@ print("\nPerforming A/D Zero's calibration...")
 #from subprocess import Popen, PIPE
 
 print("Starting PICO datactrlr...")
-datactrlr = Popen(["sudo", "/home/pi/pico/Grape2/PICOCode/picorun/datactrlr"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+datactrlr = Popen(["sudo", "/home/pi/G2User/datactrlr"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
 print("Executing the Z command...")
 stdout, stderr = datactrlr.communicate(b"z\nq\n")
