@@ -75,7 +75,7 @@ freqs = [DailyMinMaxCollection() for _ in range(3)]
 ampls = [DailyMinMaxCollection() for _ in range(3)]
 mag = [DailyMinMaxCollection() for _ in range(3)]
 last_data = ""
-gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0}
+gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "", "numSVs": 0}
 exited = False
 mode = MODE_HOURLY
 
@@ -115,10 +115,16 @@ def gps_reader():
                     _, parsed_data = nmr.read()
                     if parsed_data.msgID == "GSA":
                         gps_data["pdop"] = parsed_data.PDOP
+                        if parsed_data.navMode == 1:
+                            gps_data["fix"] = "0"
+                        else:
+                            gps_data["fix"] = str(parsed_data.navMode) + "D"
                     elif parsed_data.msgID == "GGA":
                         gps_data["lat"] = parsed_data.lat
                         gps_data["lon"] = parsed_data.lon
                         gps_data["elev"] = parsed_data.alt
+                    elif parsed_data.msgID == "GSV":
+                        gps_data["numSVs"] = parsed_data.numSV
                     time.sleep(0.5)
                 except Exception as e:
                     log.write("\n")
@@ -128,15 +134,22 @@ def gps_reader():
                     log.flush()
     else:
         with GPSDClient() as client:
+            fix_quality = 0
             while not exited:
                 tpv_str = next(client.dict_stream(filter=["TPV"]))
-                gps_data["lat"] = float(tpv_str.get("lat", "0.0"))
-                gps_data["lon"] = float(tpv_str.get("lon", "0.0"))
-                gps_data["elev"] = float(tpv_str.get("alt", "0.0"))
+                gps_data["lat"] = tpv_str.get("lat", 0.0)
+                gps_data["lon"] = tpv_str.get("lon", 0.0)
+                gps_data["elev"] = tpv_str.get("alt", 0.0)
+                fix_quality = tpv_str.get("mode", 0)
+                if fix_quality == 2 | fix_quality == 3:
+                    gps_data["fix"] = str(fix_quality) + 'D'
+                else:
+                    gps_data["fix"] = '0'
                 sky_str = next(client.dict_stream(filter=["SKY"]))
                 while sky_str.get("pdop", "n/a") == "n/a":
                     sky_str = next(client.dict_stream(filter=["SKY"]))
-                gps_data["pdop"] = float(sky_str.get("pdop", "0.0"))
+                gps_data["pdop"] = sky_str.get("pdop", 0.0)
+                gps_data["numSVs"] = sky_str.get("uSat", 0)
 
 
 def parse_json(line):
@@ -162,7 +175,7 @@ def parse_json(line):
             log.write(repr(line))
             log.write("\n")
             log.flush()
-            regex_pattern = r"(-?nan|-?inf)"
+            regex_pattern = r"(-?nan|-?inf|null)"
             replacement = "0.0"
 
             line = re.sub(regex_pattern, replacement, line)
@@ -177,7 +190,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, "Grape2 Console v10.3")
+    saddstr(stdscr, 0, 22, "Grape2 Console v12.1")
     saddstr(stdscr, 1, 24, "Node: ")
     with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
         saddstr(stdscr, 1, 30, file.readline().strip())
@@ -226,16 +239,9 @@ def print_gps_widget(stdscr, row):
     saddstr(stdscr, row + 4, 45, "Elevation(m)")
     return row + 6
 
-def print_gps(stdscr, row, data):
-    lock_string = ""
-    if data["ts"][15] == "U" or data["ts"][15] == "X":
-        lock_string = "0"
-    elif data["ts"][16] == "0" or data["ts"][16] == "1":
-        lock_string = "0"
-    else:
-        lock_string = data["ts"][16] + "D"
-    saddstr(stdscr, row + 2, 18, lock_string.ljust(2))
-    saddstr(stdscr, row + 2, 28, str(int(data["ts"][17], 16)).ljust(2))
+def print_gps(stdscr, row):
+    saddstr(stdscr, row + 2, 18, gps_data["fix"].ljust(2))
+    saddstr(stdscr, row + 2, 28, str(gps_data["numSVs"]).ljust(2))
     saddstr(stdscr, row + 2, 36, str(gps_data["pdop"]))
     saddstr(stdscr, row + 5, 15, ("{0:.6f}".format(gps_data["lat"])).rjust(11))
     saddstr(stdscr, row + 5, 30, ("{0:.6f}".format(gps_data["lon"])).rjust(11))
@@ -398,7 +404,7 @@ def update_ui(stdscr):
             stdscr.refresh()
 
             datactrlr = subprocess.Popen(
-                ["sudo", "/home/pi/G2User/datactrlr"],
+                ["sudo", "/home/pi/G2User/datactrlr", "-l"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
@@ -434,7 +440,7 @@ def update_ui(stdscr):
             if last_data != "":
                 print_version(stdscr, end_of_title, last_data)
                 print_gps_time(stdscr, end_of_version)
-                print_gps(stdscr, end_of_datetime, last_data)
+                print_gps(stdscr, end_of_datetime)
                 print_beacon(stdscr, end_of_gps, last_data)
                 print_ampl(stdscr, end_of_beacon)
                 print_freq(stdscr, end_of_ampl)
@@ -454,6 +460,7 @@ def update_ui(stdscr):
                             "Stopping the Data Controller...                    ",
                         )
                         stdscr.refresh()
+                        time.sleep(0.1)
                         datactrlr.stdin.write(b"q\n")
                         datactrlr.stdin.flush()
                 if char != curses.ERR and char == 16: # Detected Ctrl+p
