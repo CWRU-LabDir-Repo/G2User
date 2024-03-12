@@ -75,7 +75,7 @@ freqs = [DailyMinMaxCollection() for _ in range(3)]
 ampls = [DailyMinMaxCollection() for _ in range(3)]
 mag = [DailyMinMaxCollection() for _ in range(3)]
 last_data = ""
-gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "", "numSVs": 0}
+gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "", "nsats": 0}
 exited = False
 mode = MODE_HOURLY
 
@@ -114,17 +114,24 @@ def gps_reader():
                 try:
                     _, parsed_data = nmr.read()
                     if parsed_data.msgID == "GSA":
-                        gps_data["pdop"] = parsed_data.PDOP
+                        gps_data["pdop"] =  float(parsed_data.PDOP)
                         if parsed_data.navMode == 1:
                             gps_data["fix"] = "0"
                         else:
                             gps_data["fix"] = str(parsed_data.navMode) + "D"
+
+                        nsats = 0
+                        for index in range(1,13):
+                            svid_field = f'svid_{index:02d}'
+                            value = getattr(parsed_data, svid_field)
+                            if value.isDigit():
+                                nsats += 1
+                        gps_data["nsats"] = nsats
+
                     elif parsed_data.msgID == "GGA":
-                        gps_data["lat"] = parsed_data.lat
-                        gps_data["lon"] = parsed_data.lon
-                        gps_data["elev"] = parsed_data.alt
-                    elif parsed_data.msgID == "GSV":
-                        gps_data["numSVs"] = parsed_data.numSV
+                        gps_data["lat"] = float(parsed_data.lat)
+                        gps_data["lon"] =  float(parsed_data.lon)
+                        gps_data["elev"] =  float(parsed_data.alt)
                     time.sleep(0.5)
                 except Exception as e:
                     log.write("\n")
@@ -149,7 +156,7 @@ def gps_reader():
                 while sky_str.get("pdop", "n/a") == "n/a":
                     sky_str = next(client.dict_stream(filter=["SKY"]))
                 gps_data["pdop"] = sky_str.get("pdop", 0.0)
-                gps_data["numSVs"] = sky_str.get("uSat", 0)
+                gps_data["nsats"] = sky_str.get("uSat", 0)
 
 
 def parse_json(line):
@@ -190,7 +197,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, "Grape2 Console v12.1")
+    saddstr(stdscr, 0, 22, "Grape2 Console v12.2")
     saddstr(stdscr, 1, 24, "Node: ")
     with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
         saddstr(stdscr, 1, 30, file.readline().strip())
@@ -241,7 +248,7 @@ def print_gps_widget(stdscr, row):
 
 def print_gps(stdscr, row):
     saddstr(stdscr, row + 2, 18, gps_data["fix"].ljust(2))
-    saddstr(stdscr, row + 2, 28, str(gps_data["numSVs"]).ljust(2))
+    saddstr(stdscr, row + 2, 28, str(gps_data["nsats"]).ljust(2))
     saddstr(stdscr, row + 2, 36, str(gps_data["pdop"]))
     saddstr(stdscr, row + 5, 15, ("{0:.6f}".format(gps_data["lat"])).rjust(11))
     saddstr(stdscr, row + 5, 30, ("{0:.6f}".format(gps_data["lon"])).rjust(11))
