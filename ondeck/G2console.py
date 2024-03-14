@@ -94,12 +94,20 @@ def data_reader():
             try:
                 last_data = parse_json(line)
             except Exception as e:
-                log.write("\n")
-                log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
-                log.write(" -> ")
+                log.write("BEGIN datar exception")
+                log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "\n")
                 log.write(str(e))
                 log.write(",")
                 log.write(line.replace("\0", ""))
+
+def count_sats(data):
+    nsats = 0
+    for index in range(1,13):
+        svid_field = f'svid_{index:02d}'
+        value = getattr(data, svid_field)
+        if isinstance(value, int):
+            nsats += 1
+    return nsats
 
 
 def gps_reader():
@@ -107,39 +115,38 @@ def gps_reader():
     if not is_process_running("gpsd"):
         port = '/dev/ttyS0'
         baud_rate = 115200
+        sat_count_flag = True  # if True, can nsats count is valid
 
         with Serial(port, baud_rate, timeout=None) as stream:
             nmr = NMEAReader(stream, quitonerror=0)
             while not exited:
-                try:
-                    _, parsed_data = nmr.read()
-                    if parsed_data.msgID == "GSA":
-                        gps_data["pdop"] =  float(parsed_data.PDOP)
-                        if parsed_data.navMode == 1:
-                            gps_data["fix"] = "0"
-                        else:
-                            gps_data["fix"] = str(parsed_data.navMode) + "D"
+                _, parsed_data = nmr.read()
+                if parsed_data is None:
+                    continue
 
-                        nsats = 0
-                        for index in range(1,13):
-                            svid_field = f'svid_{index:02d}'
-                            value = getattr(parsed_data, svid_field)
-                            if value.isDigit():
-                                nsats += 1
+                if parsed_data.msgID == "GGA":
+                    gps_data["lat"] = float(parsed_data.lat)
+                    gps_data["lon"] =  float(parsed_data.lon)
+                    gps_data["elev"] = float(parsed_data.alt)
+                    sat_count_flag = True
+                elif parsed_data.msgID == "GSA":
+                    gps_data["pdop"] =  float(parsed_data.PDOP)
+                    gps_data["fix"] = "0" if parsed_data.navMode == 1 else str(parsed_data.navMode) + "D"
+
+                    if not sat_count_flag:
+                        continue
+                    nsats = 0
+                    while parsed_data is not None and parsed_data.msgID == "GSA":
+                        nsats += count_sats(parsed_data)
+                        _, parsed_data = nmr.read()
+                    if parsed_data is not None:
                         gps_data["nsats"] = nsats
-
-                    elif parsed_data.msgID == "GGA":
-                        gps_data["lat"] = float(parsed_data.lat)
-                        gps_data["lon"] =  float(parsed_data.lon)
-                        gps_data["elev"] =  float(parsed_data.alt)
-                    time.sleep(0.5)
-                except Exception as e:
-                    log.write("\n")
-                    log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
-                    log.write(" -> ")
-                    log.write(str(e))
-                    log.flush()
+                    else:
+                        sat_count_flag = False
+                else:
+                    sat_count_flag = True
     else:
+        # TEST: need more testing
         with GPSDClient() as client:
             fix_quality = 0
             while not exited:
@@ -197,7 +204,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, "Grape2 Console v12.2")
+    saddstr(stdscr, 0, 22, "Grape2 Console v12.3")
     saddstr(stdscr, 1, 24, "Node: ")
     with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
         saddstr(stdscr, 1, 30, file.readline().strip())
