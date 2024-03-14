@@ -9,7 +9,7 @@ import subprocess
 from datetime import datetime
 from collections import deque
 from serial import Serial
-from pynmeagps import NMEAReader
+from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
 
@@ -94,11 +94,12 @@ def data_reader():
             try:
                 last_data = parse_json(line)
             except Exception as e:
-                log.write("BEGIN datar exception")
+                log.write("BEGIN datar exception\n")
                 log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "\n")
-                log.write(str(e))
-                log.write(",")
-                log.write(line.replace("\0", ""))
+                log.write(str(e)+'\n')
+                log.write(line.replace("\0", "")+'\n')
+                log.write("END datar exception\n")
+                log.flush()
 
 def count_sats(data):
     nsats = 0
@@ -121,30 +122,39 @@ def gps_reader():
             nmr = NMEAReader(stream, quitonerror=0)
             while not exited:
                 _, parsed_data = nmr.read()
-                if parsed_data is None:
+                if not isinstance(parsed_data, NMEAMessage):
                     continue
 
-                if parsed_data.msgID == "GGA":
-                    gps_data["lat"] = float(parsed_data.lat)
-                    gps_data["lon"] =  float(parsed_data.lon)
-                    gps_data["elev"] = float(parsed_data.alt)
-                    sat_count_flag = True
-                elif parsed_data.msgID == "GSA":
-                    gps_data["pdop"] =  float(parsed_data.PDOP)
-                    gps_data["fix"] = "0" if parsed_data.navMode == 1 else str(parsed_data.navMode) + "D"
+                try:
+                    if parsed_data.msgID == "GGA":
+                        gps_data["lat"] = float(parsed_data.lat)
+                        gps_data["lon"] =  float(parsed_data.lon)
+                        gps_data["elev"] = float(parsed_data.alt)
+                        sat_count_flag = True
+                    elif parsed_data.msgID == "GSA":
+                        gps_data["pdop"] =  float(parsed_data.PDOP)
+                        gps_data["fix"] = "0" if parsed_data.navMode == 1 else str(parsed_data.navMode) + "D"
 
-                    if not sat_count_flag:
-                        continue
-                    nsats = 0
-                    while parsed_data is not None and parsed_data.msgID == "GSA":
-                        nsats += count_sats(parsed_data)
-                        _, parsed_data = nmr.read()
-                    if parsed_data is not None:
-                        gps_data["nsats"] = nsats
+                        if not sat_count_flag:
+                            continue
+                        nsats = 0
+                        while isinstance(parsed_data, NMEAMessage) and parsed_data.msgID == "GSA":
+                            nsats += count_sats(parsed_data)
+                            _, parsed_data = nmr.read()
+                        if isinstance(parsed_data, NMEAMessage):
+                            gps_data["nsats"] = nsats
+                        else:
+                            sat_count_flag = False
                     else:
-                        sat_count_flag = False
-                else:
-                    sat_count_flag = True
+                        sat_count_flag = True
+                except Exception as e:
+                    log.write("BEGIN gpsr exception\n")
+                    log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "\n")
+                    log.write(f'\"{parsed_data}\"\n')
+                    log.write(str(e)+'\n')
+                    log.write("END gpsr exception\n")
+                    log.flush()
+
     else:
         # TEST: need more testing
         with GPSDClient() as client:
@@ -186,13 +196,15 @@ def parse_json(line):
         return data
     except json.JSONDecodeError as e:
         if len(line) > 10:
+            log.write("BEGIN jsonparser exception\n")
             log.write(repr(line))
-            log.write("\n")
-            log.flush()
             regex_pattern = r"(-?nan|-?inf|null)"
             replacement = "0.0"
 
             line = re.sub(regex_pattern, replacement, line)
+            log.write(repr(line))
+            log.write("END jsonparser exception\n")
+            log.flush()
             return json.loads(
                 line,
                 parse_float=lambda x: x,
@@ -204,7 +216,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, "Grape2 Console v12.3")
+    saddstr(stdscr, 0, 22, "Grape2 Console v12.8")
     saddstr(stdscr, 1, 24, "Node: ")
     with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
         saddstr(stdscr, 1, 30, file.readline().strip())
@@ -463,10 +475,8 @@ def update_ui(stdscr):
                 stdscr.refresh()
 
                 char = stdscr.getch()
-                if "datactrlr" in locals():
-                    if char != curses.ERR and char == 24:
-                        datactrlr.stdin.write(b"\x1b")
-                        datactrlr.stdin.flush()
+                if char != curses.ERR and char == 24:
+                    if "datactrlr" in locals():
                         saddstr(
                             stdscr,
                             end_of_mag + 1,
@@ -474,9 +484,20 @@ def update_ui(stdscr):
                             "Stopping the Data Controller...                    ",
                         )
                         stdscr.refresh()
+                        datactrlr.stdin.write(b"\x1b")
+                        datactrlr.stdin.flush()
                         time.sleep(0.1)
                         datactrlr.stdin.write(b"q\n")
                         datactrlr.stdin.flush()
+                    else:
+                        saddstr(
+                            stdscr,
+                            end_of_mag + 1,
+                            6,
+                            "Terminating the Console...                         ",
+                        )
+                        stdscr.refresh()
+                        break
                 if char != curses.ERR and char == 16: # Detected Ctrl+p
                     mode = MODE_DAILY if mode == MODE_HOURLY else MODE_HOURLY
                 stdscr.refresh()
@@ -495,6 +516,7 @@ def update_ui(stdscr):
 
 
 def main(stdscr):
+    
     curses.curs_set(0)  # hide cursor
     curses.halfdelay(5)
     curses.init_pair(
