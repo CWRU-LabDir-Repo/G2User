@@ -75,7 +75,7 @@ freqs = [DailyMinMaxCollection() for _ in range(3)]
 ampls = [DailyMinMaxCollection() for _ in range(3)]
 mag = [DailyMinMaxCollection() for _ in range(3)]
 last_data = ""
-gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "", "nsats": 0}
+gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "0", "nsats": 0}
 exited = False
 mode = MODE_HOURLY
 
@@ -127,13 +127,28 @@ def gps_reader():
 
                 try:
                     if parsed_data.msgID == "GGA":
-                        gps_data["lat"] = float(parsed_data.lat)
-                        gps_data["lon"] =  float(parsed_data.lon)
-                        gps_data["elev"] = float(parsed_data.alt)
+                        try:
+                            gps_data["lat"] = float(parsed_data.lat)
+                        except:
+                            gps_data["lat"] = 0.0
+                        try:
+                            gps_data["lon"] =  float(parsed_data.lon)
+                        except:
+                            gps_data["lon"] = 0.0
+                        try:
+                            gps_data["elev"] = float(parsed_data.alt)
+                        except:
+                            gps_data["elev"] = 0.0
                         sat_count_flag = True
                     elif parsed_data.msgID == "GSA":
-                        gps_data["pdop"] =  float(parsed_data.PDOP)
-                        gps_data["fix"] = "0" if parsed_data.navMode == 1 else str(parsed_data.navMode) + "D"
+                        try:
+                            gps_data["pdop"] =  float(parsed_data.PDOP)
+                        except:
+                            gps_data["pdop"] = 0.0
+                        try:
+                            gps_data["fix"] = "0" if parsed_data.navMode == 1 else str(parsed_data.navMode) + "D"
+                        except:
+                            gps_data["fix"] = "0"
 
                         if not sat_count_flag:
                             continue
@@ -216,7 +231,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, "Grape2 Console v12.8")
+    saddstr(stdscr, 0, 22, "Grape2 Console v12.9")
     saddstr(stdscr, 1, 24, "Node: ")
     with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
         saddstr(stdscr, 1, 30, file.readline().strip())
