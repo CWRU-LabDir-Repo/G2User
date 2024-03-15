@@ -32,15 +32,15 @@
 03-06-24  Ver 2.21 Fixed format of Lat / Long numbers, magdata to ver 0.0.2
 03-07-24  Ver 2.22 Fixed running datactrlr from ~/G2User/ issue
 03-08-24  Ver 2.23 Fixed another running datactrlr from ~/G2User/ issue
+03-14-24  Ver 2.24 Added reading FW version of magdata, setting file system params of G2DATA drive (check for mounting as well)
 @author JCGibbons N8OBJ
 """
 
 # Define Software version of this code (so you don't have to search for it in the code!)
-SWVersion = '2.23'
+SWVersion = '2.24'
 
 import os
 from os import path
-#import sys
 import csv
 import maidenhead as mh
 import subprocess
@@ -68,6 +68,7 @@ CmdDir = PSWSDir + "/Scmd/"
 TempDir = PSWSDir + "/Stemp/"
 StatDir = PSWSDir + "/Sstat/"
 CodeDir = PSWSDir + "/Scode/"
+# external HD mounted into /hmoe/pi/G2DATA/
 XferDir = homepath + "/G2DATA/Sxfer/"
 RawdataDir = homepath + '/G2DATA/Srawdata/'
 DataDirR1 = homepath + "/G2DATA/SdataR1/"
@@ -85,17 +86,34 @@ print('********************************************************************\n\n'
 ################################################################
 ################################################################
 
-#Check for main base Directory
+# Check for main base Directory
 print('Checking / Creating PSWS Directory Structure\n')
 print('Home Path = ' + homepath)
 
 ################################################################
 ################################################################
 # make sure /home/pi/G2DATA SSD drive is mounted
+# if it is mounted the following file will not exist
+G2DATAndPath = '/home/pi/G2DATA/nd'
+
 G2DATAPath = '/home/pi/G2DATA/'
 
-#os.chmod(G2DATAPath, mode=0o774)   # set the permissions to 764
+if (path.exists(G2DATAndPath)):
+    print('G2DATA EXT Storage Drive not Mounted - exiting setup')
+    sys.exit(0)
+# if fileis covered up by mount, G2DATA is mounted
+else:
+    print('G2DATA is mounted - proceeding with Setup')
+    print('Setting up system params for mounted /G2DATA/ drive')
+    #    print("Owner id of the file:", os.stat(homepath).st_uid)
+    #    print("Group id of the file:", os.stat(homepath).st_gid)
+    userid = os.stat(homepath).st_uid
+    groupid = os.stat(homepath).st_gid
+    # set uid, gid  to be same as home directory
+    os.system(f"sudo chown pi:pi {G2DATAPath}")
+    os.system(f"sudo chmod 774 {G2DATAPath}")
 
+#sys.exit(0)
 ################################################################
 ################################################################
 
@@ -108,7 +126,7 @@ else:
     os.mkdir(PSWSDir)           # create the directory
     os.chmod(PSWSDir, mode=0o774)   # set the permissions to 764
 
-#Check for the subdirectories
+# Check for the subdirectories
 ################################################################
 # make sure Sinfo path exists - if not, create it with correct permissions
 if (path.exists(InfoDir)):
@@ -154,6 +172,10 @@ else:
     os.mkdir(CodeDir)           # create the directory
     os.chmod(CodeDir, mode=0o774)   # set the permissions to 764
 
+################################################################
+################################################################
+# Start working on external HD mounted in /home/pi/G2DATA/
+################################################################
 ################################################################
 # make sure Sxfer path exists - if not, create it with correct permissions
 if (path.exists(XferDir)):
@@ -238,7 +260,7 @@ print('\nNow checking all system Metadata Information')
 ################################################################
 
 ################################################################
-#Check for Serial Number Info
+# Check for Serial Number Info
 ################################################################
 SerNumPath = InfoDir + "SerNum.txt"
 
@@ -260,10 +282,10 @@ else:
         os.chmod(SerNumPath, mode=0o764)   # set the permissions to 764
     print('Saved RFDeckSN, LogicCtrlrSN Board Serial Numbers = ' + SerNum + '\n')
 
-#print('Board SN string = '+ SerNum)
+# print('Board SN string = '+ SerNum)
 
 ################################################################
-#Get FW version Number Info for Header file
+# Get FW version Number Info for Header file
 ################################################################
 
 fwinput_filename = "qDatactrlr.txt"
@@ -282,6 +304,16 @@ subprocess.run(
     stdout=open(fwoutput_filename, "w"),
 )
 
+# run magdata -v to get version numberand append to previos data file
+print('run magdata to get version number')
+magdata = subprocess.Popen(
+    ["sudo", "/home/pi/G2User/magdata", "-v"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True
+)
+magdata_outs, magdata_errs = magdata.communicate()
+
 # Read and parse out.txt to find the datactrlr version and Picorun version
 with open(fwoutput_filename, "r") as fwfile:
     lines = fwfile.readlines()
@@ -292,7 +324,7 @@ os.remove(fwoutput_filename)
 
 datactrlr_version = None
 picorun_version = None
-magdata_version = '0.0.2'  # set manually for now
+magdata_version = magdata_outs.strip().split()[-1]
 
 for line in reversed(lines):
     if "data controller" in line.lower():
@@ -300,6 +332,7 @@ for line in reversed(lines):
         break
     elif "picorun version" in line.lower():
         picorun_version = line.strip().split(" ")[-1]
+
     elif "fail" in line.lower():
         print(line)
 
@@ -315,14 +348,14 @@ print(f"magdata Version: {magdata_version}")
 
 print("\nPerforming A/D Zero's calibration...")
 
-#from subprocess import Popen, PIPE
+# from subprocess import Popen, PIPE
 
 print("Starting PICO datactrlr...")
 datactrlr = Popen(["sudo", "/home/pi/G2User/datactrlr"], stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
 print("Executing the Z command...")
 stdout, stderr = datactrlr.communicate(b"z\nq\n")
-#print("Data Controller Output:", stdout.decode())
+# print("Data Controller Output:", stdout.decode())
 
 print("A/D Zero's calibration completed")
 
@@ -369,7 +402,7 @@ else:
     if os.path.exists(MagTmpPath):
         #print("Delating semaphore file magtmp")
         os.remove(MagTmpPath) # turn off magtmp data collection
-#exit(0)
+# exit(0)
 
 ################################################################
 # check for existance of node number
@@ -441,7 +474,7 @@ while Done == 0:
         NewNN = OrigSnode
 
 ################################################################
-#Check for CallSign info
+# Check for CallSign info
 ################################################################
 CallSgnPath = InfoDir + "CallSign.txt"
 
@@ -542,7 +575,7 @@ if (GPS_fix != 3):
 else:
     FIXOK = '  GPS Fix is Good -  OK to use this GPS Location'
 
-#print(gps_data)
+# print(gps_data)
 print('\n\nUBLOX GPS reports:\n')
 print('Lat = ', GPS_lat)
 print('Lon = ', GPS_lon)
@@ -551,7 +584,7 @@ print('PDOP = ', GPS_pdop, PDOPOK)
 print('Fix = ', GPS_fix, FIXOK)
 print('\nNote:  If PDOP > 4.0 or Fix < 3 you should not use this GPS Location\n')
 
-#exit(0)
+# exit(0)
 
 ################################################################
 # check for existance of Lat Lon Elev
@@ -563,7 +596,7 @@ GPSDTPath = InfoDir + "GPSDateTime.txt"
 
 NewLLE = 's'  #indicate no change to LLE file
 
-#Now try to read GPSDateTime file
+# Now try to read GPSDateTime file
 if (path.exists(GPSDTPath)):
     with open(GPSDTPath, 'r') as GPSDTFile:
         GPSDateTime = GPSDTFile.readline()
@@ -573,7 +606,7 @@ else:
 
 print('\nCurrent Saved GPS Acquisition Date/Time = ' + GPSDateTime)
 
-#Now try to read Grid Square to file
+# Now try to read Grid Square to file
 if (path.exists(GSPath)):
     with open(GSPath, 'r') as GSFile:
         GridSqr = GSFile.readline()
@@ -603,24 +636,24 @@ else:
 
 print('Currently Saved GPS Fix,PDOP = ' + FixPDOP + '\n')
 
-#print('Old existing GPS Fix,PDOP = ' + FixPDOP)
+# print('Old existing GPS Fix,PDOP = ' + FixPDOP)
 
 if (BADfix == 0):
     print('Save current settings or use new GPS acquired settings?')
-    NewLLE = input('s = save existing, n = use new GPS data (<Enter> = n): ')
+    NewLLE = input('s = save existing, n = use new GPS data (<Enter> = s): ')
     if (NewLLE == ''):
-        NewLLE = 'n'
-#else:
+        NewLLE = 's'
+# else:
 if (BADfix == 1):
     print('Current GPS Fix, PDOP = ' + FixPDOP)
     print('GPS fix is not reliable - try again later...')
     NewLLE = 's'  # indicate no change to GPS LatLonElv
-#print('NewLLE = ' + NewLLE)
+# print('NewLLE = ' + NewLLE)
 
 ################################################################
 # Check if need to update Lat, Lon, Elev and Gridsquare
 
-#if told to save new GPS info
+# if told to save new GPS info
 if (NewLLE == 'n'):
     #get system date and time
     GPSDateTime = str(datetime.now())
@@ -644,7 +677,7 @@ if (NewLLE == 'n'):
     #Now write Lat Long Elv to a new file
     with open(LLEPath, 'w') as LLEFile:
         # create new Lat Long Elv Numbers
-        # Lat = 4.6 digits and Long = 3.6 digits @@@@
+        # Lat = 4.6 digits and Long = 3.6 digits
         #LatLonElv = str(GPS_lat) + ',' + str(GPS_lon) + ',' + str(GPS_elv)
         LatLonElv = f"{GPS_lat:.6f}".rjust(11) + "," + f"{GPS_lon:.6f}".rjust(10) + f",{GPS_elv}"
         LLEFile.write(LatLonElv) #write default LAt Long Elev
@@ -691,7 +724,7 @@ if (NewLLE == 's'):
         print('No Change - Current Saved GPS Fix,PDOP = ' + FixPDOP + '\n')  # display it
 
 ################################################################
-#Check for City State info
+# Check for City State info
 ################################################################
 CSPath = InfoDir + "CityState.txt"
 
@@ -739,18 +772,18 @@ else:
     print('City State - no change made\n')
 
 ################################################################
-#Check for FreqRef info
+# Check for FreqRef info
 ################################################################
 FreqStdPath = InfoDir + "FreqStd.txt"
 
-#if (path.exists(FreqStdPath)):
+# if (path.exists(FreqStdPath)):
 #    with open(FreqStdPath, 'r') as FrqStdFile: # file there - open it
 #        FreqStd = FrqStdFile.readline()  # read file contents
 #        FrqStdFile.close()   # close file
 #        print('\nCurrent Saved Frequency Standard = '+ FreqStd)  # display it
 
-#else:
-#print('\nFrequency Standard file not found - creating default')
+# else:
+# print('\nFrequency Standard file not found - creating default')
 with open(FreqStdPath, 'w') as FrqStdFile:
     FreqStd = 'LB GPSDO' # create default freq std
     FrqStdFile.write(FreqStd) #write default Freq Std
@@ -817,17 +850,17 @@ else:
     print('No RFGain change made\n')
 
 ################################################################
-#Get Radio info
+# Get Radio info
 ################################################################
 RadioPath = InfoDir + "Radio.txt"
 
-#if (path.exists(RadioPath)):
+# if (path.exists(RadioPath)):
 #    with open(RadioPath, 'r') as RadioFile: # file there - open it
 #        Radio = RadioFile.readline()  # read file contents
 #        RadioFile.close()   # close file
 #        print('\nCurrent Saved Radio = '+ Radio)  # display it
 
-#else:
+# else:
 #    print('\nRadio file not found- creating default')
 with open(RadioPath, 'w') as RadioFile:
     Radio = 'Grape 2' # create default Radio Type
@@ -837,16 +870,16 @@ os.chmod(RadioPath, mode=0o764)   # set the permissions to 764
 print('Setting Radio =', Radio)
 
 ################################################################
-#Get Radio 1 ID info
+# Get Radio 1 ID info
 ################################################################
 RID1Path = InfoDir + "RadioID1.txt"
-#if (path.exists(RID1Path)):
+# if (path.exists(RID1Path)):
 #    with open(RID1Path, 'r') as RadioID1File: # file there - open it
 #        RadioID1 = RadioID1File.readline()  # read file contents
 #        RadioID1File.close()   # close file
 #        print('\nCurrent Saved Radio 1 ID = '+ RadioID1)  # display it
 
-#else:
+# else:
 #    print('\nRadioID1 file not found- creating default')
 with open(RID1Path, 'w') as RadioID1File:
     RadioID1 = 'G2R1' # create default Radio 1 ID
@@ -856,16 +889,16 @@ os.chmod(RID1Path, mode=0o764)   # set the permissions to 764
 print('Setting Radio 1 ID =', RadioID1)
 
 ################################################################
-#Get Radio 2 ID info
+# Get Radio 2 ID info
 ################################################################
 RID2Path = InfoDir + "RadioID2.txt"
-#if (path.exists(RID2Path)):
+# if (path.exists(RID2Path)):
 #    with open(RID2Path, 'r') as RadioID2File: # file there - open it
 #        RadioID2 = RadioID2File.readline()  # read file contents
 #        RadioID2File.close()   # close file
 #        print('\nCurrent Saved Radio 2 ID = '+ RadioID2)  # display it
 
-#else:
+# else:
 #    print('\nRadioID1 file not found- creating default')
 with open(RID2Path, 'w') as RadioID2File:
     RadioID2 = 'G2R2' # create default Radio 2 ID
@@ -875,18 +908,18 @@ os.chmod(RID2Path, mode=0o764)   # set the permissions to 764
 print('Setting Radio 2 ID =', RadioID2)
 
 ################################################################
-#Get Radio 3 ID info
+# Get Radio 3 ID info
 ################################################################
 RID3Path = InfoDir + "RadioID3.txt"
-#if (path.exists(RID3Path)):
+# if (path.exists(RID3Path)):
 #    with open(RID3Path, 'r') as RadioID3File: # file there - open it
 #        RadioID3 = RadioID3File.readline()  # read file contents
 #        RadioID3File.close()   # close file
 #        print('\nCurrent Saved Radio 3 ID = '+ RadioID3)  # display it
 
-#else:
+# else:
 #   print('\nRadioID3 file not found- creating default')
- 
+
 with open(RID3Path, 'w') as RadioID3File:
     RadioID3 = 'G2R3' # create default Radio ID
     RadioID3File.write(RadioID3) #write default Radio 3 ID
@@ -895,7 +928,7 @@ os.chmod(RID3Path, mode=0o764)   # set the permissions to 764
 print('Setting Radio 3 ID =', RadioID3)
 
 ################################################################
-#Get Antenna info
+# Get Antenna info
 ################################################################
 AntPath = InfoDir + "Antenna.txt"
 if (path.exists(AntPath)):
@@ -940,7 +973,7 @@ else:
     print('Antenna - no change made')
 
 ################################################################
-#Get System info
+# Get System info
 ################################################################
 SysInfoPath = InfoDir + "System.txt"
 if (path.exists(SysInfoPath)):
@@ -952,7 +985,7 @@ if (path.exists(SysInfoPath)):
 else:
     print('\nSystem Info file not found- creating default')
     with open(SysInfoPath, 'w') as SysInfoFile:
-        SysInf = 'RasPi4B/8GB, RasPi OS Bullseye 6.1.21, Grape 2' # create default system
+        SysInf = 'RasPi4B/8GB, RasPi OS Bullseye 6.1.21' # create default system
         SysInfoFile.write(SysInf) #write default system
         SysInfoFile.close()
     os.chmod(SysInfoPath, mode=0o764)   # set the permissions to 764
@@ -989,7 +1022,7 @@ else:
 
 
 ################################################################
-#Get remaining autogenerated infor for final listing of station info
+# Get remaining autogenerated infor for final listing of station info
 ################################################################
 
 # Get autogenerated GridSquare
@@ -1010,7 +1043,7 @@ BcnFreqChng = 0
 #
 ################################################################
 ################################################################
-#@@@@
+# @@@@
 
 ################################################################
 # Check for existing Beacon1 setting
@@ -1089,7 +1122,7 @@ if(B1Chng == 1): # 0 for keep old value, 1 for new entry
 else:
     print('Beacon1 = ' + Beacon1 + ' - no change made')
 
-#exit(0)
+# exit(0)
 ################################################################
 # Check for existing Beacon2 setting
 ################################################################
@@ -1252,7 +1285,7 @@ else:
 # new one by creating the file NBF as ~/PSWS/Sinfo/NBF
 
 BCPath = CmdDir + "NBF"
- 
+
 if(BcnFreqChng == 1 ): # lookd for flag of freq change
     with open(BCPath, 'w') as BCFile:
         BCFile.write('New Beacon Freq - Delete this hours Srawdata file!') #write new beacon freq flag file
@@ -1296,7 +1329,7 @@ print('\nCreating PICO Initialization File = ' + PICOSetPath + '\n')
 ################################################################
 ZeroPath = InfoDir + "zeros.dat"
 
-## if first time to run create default 
+## if first time to run create default
 if (path.exists(ZeroPath)):
     with open(ZeroPath, 'r') as ZeroFile: # file there - open it
         Zeros = ZeroFile.readline()  # read file contents
@@ -1317,9 +1350,9 @@ else:
 ################################################################
 # Create header files for usage every day
 
-#LatLonElv = Lat + ',' + Long + ',' + Elev
+# LatLonElv = Lat + ',' + Long + ',' + Elev
 
-#print('\n Final Metadata for this station:\n')
+# print('\n Final Metadata for this station:\n')
 
 print('########################################################');
 print('# MetaData for Grape Gen 2 Station');
@@ -1355,7 +1388,7 @@ print('#########################################################')
 
 ################################################################
 ################################################################
-#Create Raw Data Header File Info and save to PSWSinfo.txt
+# Create Raw Data Header File Info and save to PSWSinfo.txt
 ################################################################
 PSWSInfoPath = InfoDir + "PSWSinfo.txt"
 
@@ -1397,10 +1430,10 @@ with open(PSWSInfoPath, 'w') as PSWSInfoFile:
 os.chmod(PSWSInfoPath, mode=0o764)   # set the permissions to 764
 
 print("\nSaved file = "  + PSWSInfoPath)
-#exit(0)
+# exit(0)
 
 ################################################################
-#Create Radio 1 Data Header File Info and save to Radio1Header.txt
+# Create Radio 1 Data Header File Info and save to Radio1Header.txt
 ################################################################
 R1HdrPth = InfoDir + "Radio1Header.txt"
 
@@ -1435,9 +1468,9 @@ with open(R1HdrPth, 'w') as R1HdrFile:
 
 os.chmod(R1HdrPth, mode=0o764)   # set the permissions to 764
 print("Saved file = " + R1HdrPth)
-#exit(0)
+# exit(0)
 ################################################################
-#Create Radio 2 Data Header File Info and save to Radio1Header.txt
+# Create Radio 2 Data Header File Info and save to Radio1Header.txt
 ################################################################
 R2HdrPth = InfoDir + "Radio2Header.txt"
 
@@ -1471,9 +1504,9 @@ with open(R2HdrPth, 'w') as R2HdrFile:
     R2HdrFile.close() # save file and update permissions
 os.chmod(R2HdrPth, mode=0o764)   # set the permissions to 764
 print('Saved file = ' + R2HdrPth)
-#exit(0)
+# exit(0)
 ################################################################
-#Create Radio 3 Data Header File Info and save to Radio1Header.txt
+# Create Radio 3 Data Header File Info and save to Radio1Header.txt
 ################################################################
 R3HdrPth = InfoDir + "Radio3Header.txt"
 
@@ -1508,9 +1541,9 @@ with open(R3HdrPth, 'w') as R3HdrFile:
 
 os.chmod(R3HdrPth, mode=0o764)   # set the permissions to 764
 print('Saved file = ' + R3HdrPth)
-#exit(0)
+# exit(0)
 ################################################################
-#Create Magnetometer Header File Info and save to MAGTMPHeader.txt
+# Create Magnetometer Header File Info and save to MAGTMPHeader.txt
 ################################################################
 MAGTMPHdrPth = InfoDir + "MAGTMPHeader.txt"
 
@@ -1541,13 +1574,13 @@ with open(MAGTMPHdrPth, 'w') as MAGTMPHdrFile:
 
 os.chmod(MAGTMPHdrPth, mode=0o764)   # set the permissions to 764
 print('Saved file = ' + MAGTMPHdrPth)
-#exit(0)
+# aya.exit(0)
 ################################################################
 ################################################################
 ################################################################
 # All done - indicate so to user
 print('\nPSWS file structure / System Info Program Exiting Gracefully')
-exit(0)
+sys.exit(0)
 ################################################################
 ################################################################
 ################################################################
