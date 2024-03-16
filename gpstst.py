@@ -9,7 +9,7 @@ from pynmeagps import NMEAReader
 from gpsdclient import GPSDClient
 
 
-gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "", "numSVs": 0}
+gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "", "nsats": 0}
 exited = False
 
 
@@ -26,36 +26,55 @@ def saddstr(stdscr, y, x, string):
         stdscr.addstr(y, x, string)
 
 
+def count_sats(data):
+    nsats = 0
+    for index in range(1, 13):
+        svid_field = f"svid_{index:02d}"
+        value = getattr(data, svid_field)
+        if isinstance(value, int):
+            nsats += 1
+    return nsats
+
+
 def gps_reader():
     global gps_data, exited, log
     if not is_process_running("gpsd"):
         port = "/dev/ttyS0"
         baud_rate = 115200
+        sat_count_flag = True  # if True, can nsats count is valid
 
         with Serial(port, baud_rate, timeout=None) as stream:
             nmr = NMEAReader(stream, quitonerror=0)
             while not exited:
-                try:
-                    _, parsed_data = nmr.read()
-                    if parsed_data.msgID == "GSA":
-                        gps_data["pdop"] = parsed_data.PDOP
-                        if parsed_data.navMode == 1:
-                            gps_data["fix"] = "0"
-                        else:
-                            gps_data["fix"] = str(parsed_data.navMode) + "D"
-                    elif parsed_data.msgID == "GGA":
-                        gps_data["lat"] = parsed_data.lat
-                        gps_data["lon"] = parsed_data.lon
-                        gps_data["elev"] = parsed_data.alt
-                    elif parsed_data.msgID == "GSV":
-                        gps_data["numSVs"] = parsed_data.numSV
-                    time.sleep(0.05)
-                except Exception as e:
-                    log.write("\n")
-                    log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S"))
-                    log.write(" -> ")
-                    log.write(str(e))
-                    log.flush()
+                _, parsed_data = nmr.read()
+                if parsed_data is None:
+                    continue
+
+                if parsed_data.msgID == "GGA":
+                    gps_data["lat"] = float(parsed_data.lat)
+                    gps_data["lon"] = float(parsed_data.lon)
+                    gps_data["elev"] = float(parsed_data.alt)
+                    sat_count_flag = True
+                elif parsed_data.msgID == "GSA":
+                    gps_data["pdop"] = float(parsed_data.PDOP)
+                    gps_data["fix"] = (
+                        "0"
+                        if parsed_data.navMode == 1
+                        else str(parsed_data.navMode) + "D"
+                    )
+
+                    if not sat_count_flag:
+                        continue
+                    nsats = 0
+                    while parsed_data is not None and parsed_data.msgID == "GSA":
+                        nsats += count_sats(parsed_data)
+                        _, parsed_data = nmr.read()
+                    if parsed_data is not None:
+                        gps_data["nsats"] = nsats
+                    else:
+                        sat_count_flag = False
+                else:
+                    sat_count_flag = True
     else:
         with GPSDClient() as client:
             fix_quality = 0
@@ -73,11 +92,11 @@ def gps_reader():
                 while sky_str.get("pdop", "n/a") == "n/a":
                     sky_str = next(client.dict_stream(filter=["SKY"]))
                 gps_data["pdop"] = sky_str.get("pdop", 0.0)
-                gps_data["numSVs"] = sky_str.get("uSat", 0)
+                gps_data["nsats"] = sky_str.get("uSat", 0)
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 19, "Grape2 GPS Diagnostic v0.0")
+    saddstr(stdscr, 0, 19, "Grape2 GPS Diagnostic v1.0")
     nextrow = 1
     return nextrow
 
@@ -105,7 +124,7 @@ def print_gps_widget(stdscr, row):
 
 def print_gps(stdscr, row):
     saddstr(stdscr, row + 2, 18, gps_data["fix"].ljust(2))
-    saddstr(stdscr, row + 2, 28, str(gps_data["numSVs"]).ljust(2))
+    saddstr(stdscr, row + 2, 28, str(gps_data["nsats"]).ljust(2))
     saddstr(stdscr, row + 2, 36, str(gps_data["pdop"]))
     saddstr(stdscr, row + 5, 15, ("{0:.6f}".format(gps_data["lat"])).rjust(11))
     saddstr(stdscr, row + 5, 30, ("{0:.6f}".format(gps_data["lon"])).rjust(11))
@@ -125,6 +144,7 @@ def update_ui(stdscr):
             print_gps_time(stdscr, end_of_title)
             print_gps(stdscr, end_of_datetime)
             stdscr.refresh()
+            time.sleep(0.1)
     except KeyboardInterrupt:
         saddstr(
             stdscr,
