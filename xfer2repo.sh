@@ -4,7 +4,8 @@
 # 2-23-2022 Ver 1.01 N8OBJ Changed repo stuff again
 # 3-30-2022 Ver 1.02 N8OBJ added 'verbosity'
 # 2-24-2024 Ver 1.03 N8OBJ added new /G2DATA/Sxfer directory
-
+# 3-18-2024 Ver 1.04 N8OBJ added date
+date
 ls -1 /home/pi/G2DATA/Sxfer/ > /home/pi/PSWS/Stemp/sflist
 awk '{print "/home/pi/G2DATA/Sxfer/" $0}' /home/pi/PSWS/Stemp/sflist > /home/pi/PSWS/Stemp/go2repo
 echo 'Files to send to Repo:'
