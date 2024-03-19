@@ -8,7 +8,11 @@ DATE=`date +%Y-%m-%d --date="1 day ago"`
 NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
 ZIPFILE=${DATE}T000000Z_${NODE}
 
+# zip all daily files for transfer
 time /usr/bin/zip -m ${ZIPFILE} *
+
+# gzip daily dc log file for long term storage
+/usr/bin/gzip /home/pi/G2DATA/Slogs/${ZIPFILE}_DC.log
 
 echo Compress files script ended
 

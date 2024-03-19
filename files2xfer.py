@@ -47,6 +47,17 @@ def copy_mag_files(date_str, dest_dir):
                 print(f"Copied {file_name} to {dest_dir}")
 
 
+def copy_log_files(date_str, dest_dir):
+    directory = "/home/pi/G2DATA/Slogs/"
+    # Copy log file to /G2DATA/Sxfer/
+    for file_name in os.listdir(directory):
+        if date_str in file_name:
+            source_path = os.path.join(directory, file_name)
+            dest_path = os.path.join(dest_dir, file_name)
+            shutil.copyfile(source_path, dest_path)
+            print(f"Copied {file_name} to {dest_dir}")
+
+
 def copy_yesterday_files():
     # Calculate yesterday's date
     yesterday = datetime.now() - timedelta(days=1)
@@ -55,6 +66,7 @@ def copy_yesterday_files():
 
     copy_mag_files(yesterday_str, xfer_dir)
     copy_radio_files(yesterday_str, xfer_dir)
+    copy_log_files(yesterday_str, xfer_dir)
 
 
 def write_filenames():
