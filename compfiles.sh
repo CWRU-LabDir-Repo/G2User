@@ -11,9 +11,8 @@ ZIPFILE=${DATE}T000000Z_${NODE}
 # zip all daily files for transfer
 time /usr/bin/zip -m ${ZIPFILE} *
 
-# gzip daily dc log file for long term storage and copy gz file to Sxfer
+# gzip daily dc log file for long term storage
 /usr/bin/gzip /home/pi/G2DATA/Slogs/${ZIPFILE}_DC.log
-/usr/bin/cp -p /home/pi/G2DATA/Slogs/${ZIPFILE}_DC.log.gz .
 
 echo Compress files script ended
 
