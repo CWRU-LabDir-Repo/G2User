@@ -13,6 +13,7 @@ Date        Version     Author      Comments
 03-15-24    Ver 2.00    KC3UAX      Continue adapting script for G2
 03-15-24    Ver 3.00    KC3UAX      Fixed timestring conversion, ylim, and saving files in the appropriate directories
 03-24-24    Ver 3.01    KC3UAX      Accepts filenames from either stdin or command parameters
+03-24-24    Ver 3.02    KC3UAX      Fixes frequency line, removes colons in output filenames
 """
 import os
 import sys
@@ -41,7 +42,7 @@ beacon_frequencies = {
     "CHU3": ("3.330 MHz", "CHU"),
     "CHU7": ("7.850 MHz", "CHU"),
     "CHU14": ("14.670 MHz", "CHU"),
-    "Unknown": ("", "Unknown Beacon"),
+    "Unknown": ("0", "Unknown Beacon"),
 }
 
 
@@ -68,6 +69,7 @@ def read_file(data_file: str):
         metadata["CityState"] = header[7]
         metadata["RadioID"] = header[8]
         metadata["Beacon"] = header[9]
+        metadata["UTCDTZ"] = metadata["UTCDTZ"].replace(":", "")
         data = pd.read_csv(file, comment="#")
     return data, metadata
 
@@ -82,7 +84,7 @@ def process_data(data: pd.DataFrame):
     print("dB min: ", data["Power_dB"].min(), "; dB max: ", data["Power_dB"].max())
 
 
-def create_filter(data: pd.DataFrame):
+def create_filter(data: pd.DataFrame, center_freq):
     # %% Create an order 3 lowpass butterworth filter.
     # This is a digital filter (analog=False)
     # Filtering at .01 to .004 times the Nyquist rate seems "about right."
@@ -95,7 +97,7 @@ def create_filter(data: pd.DataFrame):
     b, a = signal.butter(FILTERORDER, FILTERBREAK, analog=False, btype="low")
 
     # Use the just-created filter coefficients for a noncausal filtering (filtfilt is forward-backward noncausal)
-    filt_doppler = signal.filtfilt(b, a, data["Freq"])
+    filt_doppler = signal.filtfilt(b, a, data["Freq"]) - center_freq
     filt_power = signal.filtfilt(b, a, data["Power_dB"])
     return filt_doppler, filt_power
 
@@ -112,7 +114,8 @@ def plot_data(data, filt_doppler, filt_power, metadata):
     ax1.set_ylabel("Doppler shift, Hz")
     ax1.set_xlim(0, 24)  # UTC day
     ax1.set_xticks(range(25), minor=False)
-    ax1.set_ylim([-1.0, 1.0])  # -1 to 1 Hz for Doppler shift
+    # ax1.set_ylim([-1.0, 1.0])  # -1 to 1 Hz for Doppler shift
+    # ax1.set_ylim([4999999, 5000001])  # -1 to 1 Hz for Doppler shift
     # plot a zero freq reference line for 0.000 Hz Doppler shift
     plt.axhline(y=0, color="gray", lw=1)
     # set up axis 2 in red
@@ -153,7 +156,9 @@ def create_plot_file(data_file: str):
     print("Ready to start processing records")
     process_data(data)
 
-    filt_doppler, filt_power = create_filter(data)
+    filt_doppler, filt_power = create_filter(
+        data, float(beacon_frequencies[metadata["Beacon"]][0].split()[0]) * 10**6
+    )
     plot_data(data, filt_doppler, filt_power, metadata)
 
     graph_file = (
