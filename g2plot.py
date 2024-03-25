@@ -12,6 +12,7 @@ Date        Version     Author      Comments
 03-14-24    Ver 1.00    jgibbons    Initial commit
 03-15-24    Ver 2.00    KC3UAX      Continue adapting script for G2
 03-15-24    Ver 3.00    KC3UAX      Fixed timestring conversion, ylim, and saving files in the appropriate directories
+03-24-24    Ver 3.01    KC3UAX      Accepts filenames from either stdin or command parameters
 """
 import os
 import sys
@@ -180,8 +181,14 @@ def create_plot_file(data_file: str):
 
 
 if __name__ == "__main__":
-    for arg in sys.stdin:
-        create_plot_file(arg.strip())
+    if len(sys.argv) > 1:
+        # Command line arguments provided
+        for arg in sys.argv[1:]:
+            create_plot_file(arg.strip())
+    else:
+        # Read from standard input
+        for arg in sys.stdin:
+            create_plot_file(arg.strip())
 
     print("Exiting python combined processing program gracefully")
     sys.exit(0)
