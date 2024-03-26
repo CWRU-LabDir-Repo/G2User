@@ -1,0 +1,14 @@
+#!/bin/bash
+date
+cd /home/pi/G2DATA/
+sudo rm SdataR1/*
+sudo rm SdataR2/*
+sudo rm SdataR3/*
+sudo rm Smagtmp/*
+sudo rm Srawdata/*
+sudo rm Slogs/*
+sudo rm Splots/*
+sudo rm Sxfer/*
+cd /home/pi/
+
+
