@@ -17,6 +17,7 @@ from gpsdclient import GPSDClient
 MODE_DAILY = "daily"
 MODE_HOURLY = "hourly"
 
+
 def is_process_running(process_name):
     for process in psutil.process_iter(["pid", "name"]):
         if process.info["name"] == process_name:
@@ -47,9 +48,15 @@ class DailyMinMaxCollection:
     def get_daily_max(self, mode):
         if not self.collection:
             return None
-        
+
         if mode == MODE_DAILY:
-            return max(((hour_data["max"], abs(hour_data["max"])) for hour_data in self.collection), key=lambda x: x[1])[0]
+            return max(
+                (
+                    (hour_data["max"], abs(hour_data["max"]))
+                    for hour_data in self.collection
+                ),
+                key=lambda x: x[1],
+            )[0]
         else:
             return self.collection[-1]["max"]
 
@@ -58,10 +65,16 @@ class DailyMinMaxCollection:
             return None
 
         if mode == MODE_DAILY:
-            return min(((hour_data["min"], abs(hour_data["min"])) for hour_data in self.collection), key=lambda x: x[1])[0]
+            return min(
+                (
+                    (hour_data["min"], abs(hour_data["min"]))
+                    for hour_data in self.collection
+                ),
+                key=lambda x: x[1],
+            )[0]
         else:
             return self.collection[-1]["min"]
-        
+
     def get_current(self):
         if not self.collection:
             return None
@@ -75,9 +88,21 @@ freqs = [DailyMinMaxCollection() for _ in range(3)]
 ampls = [DailyMinMaxCollection() for _ in range(3)]
 mag = [DailyMinMaxCollection() for _ in range(3)]
 last_data = ""
-gps_data = {"time": "00:00:00", "day": "00", "month": "00", "year": "0000", "lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "0", "nsats": 0}
+gps_data = {
+    "time": "00:00:00",
+    "day": "00",
+    "month": "00",
+    "year": "0000",
+    "lat": 0.0,
+    "lon": 0.0,
+    "elev": 0.0,
+    "pdop": 0.0,
+    "fix": "0",
+    "nsats": 0,
+}
 exited = False
 mode = MODE_HOURLY
+
 
 def saddstr(stdscr, y, x, string):
     max_y, max_x = stdscr.getmaxyx()
@@ -96,15 +121,16 @@ def data_reader():
             except Exception as e:
                 log.write("BEGIN datar exception\n")
                 log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "\n")
-                log.write(str(e)+'\n')
-                log.write(line.replace("\0", "")+'\n')
+                log.write(str(e) + "\n")
+                log.write(line.replace("\0", "") + "\n")
                 log.write("END datar exception\n")
                 log.flush()
 
+
 def count_sats(data):
     nsats = 0
-    for index in range(1,13):
-        svid_field = f'svid_{index:02d}'
+    for index in range(1, 13):
+        svid_field = f"svid_{index:02d}"
         value = getattr(data, svid_field)
         if isinstance(value, int):
             nsats += 1
@@ -114,7 +140,7 @@ def count_sats(data):
 def gps_reader():
     global gps_data, exited, log
     if not is_process_running("gpsd"):
-        port = '/dev/ttyS0'
+        port = "/dev/ttyS0"
         baud_rate = 115200
         sat_count_flag = True  # if True, can nsats count is valid
 
@@ -132,7 +158,7 @@ def gps_reader():
                         except:
                             gps_data["lat"] = 0.0
                         try:
-                            gps_data["lon"] =  float(parsed_data.lon)
+                            gps_data["lon"] = float(parsed_data.lon)
                         except:
                             gps_data["lon"] = 0.0
                         try:
@@ -142,18 +168,25 @@ def gps_reader():
                         sat_count_flag = True
                     elif parsed_data.msgID == "GSA":
                         try:
-                            gps_data["pdop"] =  float(parsed_data.PDOP)
+                            gps_data["pdop"] = float(parsed_data.PDOP)
                         except:
                             gps_data["pdop"] = 0.0
                         try:
-                            gps_data["fix"] = "0" if parsed_data.navMode == 1 else str(parsed_data.navMode) + "D"
+                            gps_data["fix"] = (
+                                "0"
+                                if parsed_data.navMode == 1
+                                else str(parsed_data.navMode) + "D"
+                            )
                         except:
                             gps_data["fix"] = "0"
 
                         if not sat_count_flag:
                             continue
                         nsats = 0
-                        while isinstance(parsed_data, NMEAMessage) and parsed_data.msgID == "GSA":
+                        while (
+                            isinstance(parsed_data, NMEAMessage)
+                            and parsed_data.msgID == "GSA"
+                        ):
                             nsats += count_sats(parsed_data)
                             _, parsed_data = nmr.read()
                         if isinstance(parsed_data, NMEAMessage):
@@ -170,8 +203,8 @@ def gps_reader():
                 except Exception as e:
                     log.write("BEGIN gpsr exception\n")
                     log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "\n")
-                    log.write(f'\"{parsed_data}\"\n')
-                    log.write(str(e)+'\n')
+                    log.write(f'"{parsed_data}"\n')
+                    log.write(str(e) + "\n")
                     log.write("END gpsr exception\n")
                     log.flush()
 
@@ -186,9 +219,9 @@ def gps_reader():
                 gps_data["elev"] = tpv_str.get("alt", 0.0)
                 fix_quality = tpv_str.get("mode", 0)
                 if fix_quality == 2 | fix_quality == 3:
-                    gps_data["fix"] = str(fix_quality) + 'D'
+                    gps_data["fix"] = str(fix_quality) + "D"
                 else:
-                    gps_data["fix"] = '0'
+                    gps_data["fix"] = "0"
                 sky_str = next(client.dict_stream(filter=["SKY"]))
                 while sky_str.get("pdop", "n/a") == "n/a":
                     sky_str = next(client.dict_stream(filter=["SKY"]))
@@ -273,7 +306,7 @@ def print_gps_time(stdscr, row):
         22,
         f"{gps_data['month'].zfill(2)}/{gps_data['day'].zfill(2)}/{gps_data['year'].zfill(4)} {gps_data['time']}",
     )
-    return row+2
+    return row + 2
 
 
 def print_gps_widget(stdscr, row):
@@ -288,6 +321,7 @@ def print_gps_widget(stdscr, row):
     saddstr(stdscr, row + 4, 32, "Longitude")
     saddstr(stdscr, row + 4, 45, "Elevation(m)")
     return row + 6
+
 
 def print_gps(stdscr, row):
     saddstr(stdscr, row + 2, 18, gps_data["fix"].ljust(2))
@@ -308,7 +342,7 @@ def print_beacon_widget(stdscr, row):
 
 def print_beacon(stdscr, row, data):
     for i in range(3):
-        #BUG: line 234 TypeError: string indices must be integers
+        # BUG: line 234 TypeError: string indices must be integers
         saddstr(stdscr, row + 2, 18 + 15 * i, data["radios"][i]["beacon"].ljust(5))
 
 
@@ -441,23 +475,35 @@ def update_ui(stdscr):
     end_of_freq = print_freq_widget(stdscr, end_of_ampl)
     end_of_temp = print_temp_widget(stdscr, end_of_freq)
     end_of_mag = print_mag_widget(stdscr, end_of_temp)
-    saddstr(stdscr, end_of_mag + 2, 6, "<ctrl-p> = toggle for 1Hr/24Hr Min/Max            ")
+    saddstr(
+        stdscr, end_of_mag + 2, 6, "<ctrl-p> = toggle for 1Hr/24Hr Min/Max            "
+    )
 
     program_name = "datactrlr"
     while not is_process_running(program_name):
-        saddstr(stdscr, end_of_mag + 1, 6, "<r> = start Data Controller                        ")
+        saddstr(
+            stdscr,
+            end_of_mag + 1,
+            6,
+            "<r> = start Data Controller                        ",
+        )
         stdscr.refresh()
 
         char = stdscr.getch()
         if char != curses.ERR and char == 114:  # statmon detected r
-            saddstr(stdscr, end_of_mag + 1, 6, "Starting the Data Controller...                ")
+            saddstr(
+                stdscr,
+                end_of_mag + 1,
+                6,
+                "Starting the Data Controller...                ",
+            )
             stdscr.refresh()
 
             datactrlr = subprocess.Popen(
                 ["sudo", "/home/pi/G2User/datactrlr", "-l"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                stderr=subprocess.DEVNULL,
             )
 
             datactrlr.stdin.write(b"r\n")
@@ -522,7 +568,7 @@ def update_ui(stdscr):
                         )
                         stdscr.refresh()
                         break
-                if char != curses.ERR and char == 16: # Detected Ctrl+p
+                if char != curses.ERR and char == 16:  # Detected Ctrl+p
                     mode = MODE_DAILY if mode == MODE_HOURLY else MODE_HOURLY
                 stdscr.refresh()
     except KeyboardInterrupt:
@@ -540,7 +586,7 @@ def update_ui(stdscr):
 
 
 def main(stdscr):
-    
+
     curses.curs_set(0)  # hide cursor
     curses.halfdelay(5)
     curses.init_pair(
