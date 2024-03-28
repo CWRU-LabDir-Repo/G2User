@@ -6,14 +6,15 @@
 # 2-24-2024 Ver 1.03 N8OBJ added new /G2DATA/Sxfer directory
 # 3-18-2024 Ver 1.04 N8OBJ added date
 date
-ls -1 /home/pi/G2DATA/Sxfer/ > /home/pi/PSWS/Stemp/sflist
-awk '{print "/home/pi/G2DATA/Sxfer/" $0}' /home/pi/PSWS/Stemp/sflist > /home/pi/PSWS/Stemp/go2repo
-echo 'Files to send to Repo:'
-cat /home/pi/PSWS/Stemp/go2repo
-echo 'Attempting xfer to repo...'
-if (< /home/pi/PSWS/Stemp/go2repo xargs -I %  curl -v -u "grape@wwvarc.org:5F3gjdEKEt" -T "{%}" ftp://208.109.41.230/);
-then
-    echo 'Files transferred ok - removing them from ~/G2DATA/Sxfer/'; rm /home/pi/G2DATA/Sxfer/*;
-else
-    echo 'File xfer failed - leaving files in ~/G2DATA/SXfer/ for next try tomorrow';
-fi
+echo 'transfer disabled for now...'
+#ls -1 /home/pi/G2DATA/Sxfer/ > /home/pi/PSWS/Stemp/sflist
+#awk '{print "/home/pi/G2DATA/Sxfer/" $0}' /home/pi/PSWS/Stemp/sflist > /home/pi/PSWS/Stemp/go2repo
+#echo 'Files to send to Repo:'
+#cat /home/pi/PSWS/Stemp/go2repo
+#echo 'Attempting xfer to repo...'
+#if (< /home/pi/PSWS/Stemp/go2repo xargs -I %  curl -v -u "grape@wwvarc.org:5F3gjdEKEt" -T "{%}" ftp://208.109.41.230/);
+#then
+#    echo 'Files transferred ok - removing them from ~/G2DATA/Sxfer/'; rm /home/pi/G2DATA/Sxfer/*;
+#else
+#    echo 'File xfer failed - leaving files in ~/G2DATA/SXfer/ for next try tomorrow';
+#fi
