@@ -75,7 +75,7 @@ freqs = [DailyMinMaxCollection() for _ in range(3)]
 ampls = [DailyMinMaxCollection() for _ in range(3)]
 mag = [DailyMinMaxCollection() for _ in range(3)]
 last_data = ""
-gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "0", "nsats": 0}
+gps_data = {"time": "00:00:00", "day": "00", "month": "00", "year": "0000", "lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "0", "nsats": 0}
 exited = False
 mode = MODE_HOURLY
 
@@ -160,6 +160,11 @@ def gps_reader():
                             gps_data["nsats"] = nsats
                         else:
                             sat_count_flag = False
+                    elif parsed_data.msgID == "ZDA":
+                        gps_data["time"] = parsed_data.time
+                        gps_data["year"] = str(parsed_data.year)
+                        gps_data["month"] = str(parsed_data.month)
+                        gps_data["day"] = str(parsed_data.day)
                     else:
                         sat_count_flag = True
                 except Exception as e:
@@ -231,7 +236,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, "Grape2 Console v12.9")
+    saddstr(stdscr, 0, 22, "Grape2 Console v12.10")
     saddstr(stdscr, 1, 24, "Node: ")
     with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
         saddstr(stdscr, 1, 30, file.readline().strip())
@@ -257,13 +262,17 @@ def print_version(stdscr, row, data):
 
 
 def print_datetime_widget(stdscr, row):
-    saddstr(stdscr, row + 1, 0, "GPS Date/Time")
+    saddstr(stdscr, row + 1, 0, "GPS UTC Date/Time")
     return row + 2
 
 
 def print_gps_time(stdscr, row):
-    sys_datetime = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    saddstr(stdscr, row+1, 22, sys_datetime)
+    saddstr(
+        stdscr,
+        row + 1,
+        22,
+        f"{gps_data['month'].zfill(2)}/{gps_data['day'].zfill(2)}/{gps_data['year'].zfill(4)} {gps_data['time']}",
+    )
     return row+2
 
 
