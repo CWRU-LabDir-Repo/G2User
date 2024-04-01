@@ -152,7 +152,7 @@ def gps_reader():
                     continue
 
                 try:
-                    if parsed_data.msgID == "GGA":
+                    if "D" in gps_data["fix"] and parsed_data.msgID == "GGA":
                         try:
                             gps_data["lat"] = float(parsed_data.lat)
                         except:
@@ -193,11 +193,23 @@ def gps_reader():
                             gps_data["nsats"] = nsats
                         else:
                             sat_count_flag = False
-                    elif parsed_data.msgID == "ZDA":
-                        gps_data["time"] = parsed_data.time
-                        gps_data["year"] = str(parsed_data.year)
-                        gps_data["month"] = str(parsed_data.month)
-                        gps_data["day"] = str(parsed_data.day)
+                    elif "D" in gps_data["fix"] and parsed_data.msgID == "ZDA":
+                        try:
+                            gps_data["time"] = parsed_data.time
+                        except:
+                            gps_data["time"] = "00:00:00"
+                        try:
+                            gps_data["year"] = str(parsed_data.year)
+                        except:
+                            gps_data["year"] = "0000"
+                        try:
+                            gps_data["month"] = str(parsed_data.month)
+                        except:
+                            gps_data["month"] = "00"
+                        try:
+                            gps_data["day"] = str(parsed_data.day)
+                        except:
+                            gps_data["day"] = "00"
                     else:
                         sat_count_flag = True
                 except Exception as e:

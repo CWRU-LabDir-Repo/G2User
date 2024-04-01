@@ -5,11 +5,22 @@ import curses
 import threading
 from datetime import datetime
 from serial import Serial
-from pynmeagps import NMEAReader
+from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
 
-gps_data = {"lat": 0.0, "lon": 0.0, "elev": 0.0, "pdop": 0.0, "fix": "", "nsats": 0}
+gps_data = {
+    "time": "00:00:00",
+    "day": "00",
+    "month": "00",
+    "year": "0000",
+    "lat": 0.0,
+    "lon": 0.0,
+    "elev": 0.0,
+    "pdop": 0.0,
+    "fix": "",
+    "nsats": 0,
+}
 exited = False
 
 
@@ -50,29 +61,64 @@ def gps_reader():
                 if parsed_data is None:
                     continue
 
-                if parsed_data.msgID == "GGA":
-                    gps_data["lat"] = float(parsed_data.lat)
-                    gps_data["lon"] = float(parsed_data.lon)
-                    gps_data["elev"] = float(parsed_data.alt)
+                if "D" in gps_data["fix"] and parsed_data.msgID == "GGA":
+                    try:
+                        gps_data["lat"] = float(parsed_data.lat)
+                    except:
+                        gps_data["lat"] = 0.0
+                    try:
+                        gps_data["lon"] = float(parsed_data.lon)
+                    except:
+                        gps_data["lon"] = 0.0
+                    try:
+                        gps_data["elev"] = float(parsed_data.alt)
+                    except:
+                        gps_data["elev"] = 0.0
                     sat_count_flag = True
                 elif parsed_data.msgID == "GSA":
-                    gps_data["pdop"] = float(parsed_data.PDOP)
-                    gps_data["fix"] = (
-                        "0"
-                        if parsed_data.navMode == 1
-                        else str(parsed_data.navMode) + "D"
-                    )
+                    try:
+                        gps_data["pdop"] = float(parsed_data.PDOP)
+                    except:
+                        gps_data["pdop"] = 0.0
+                    try:
+                        gps_data["fix"] = (
+                            "0"
+                            if parsed_data.navMode == 1
+                            else str(parsed_data.navMode) + "D"
+                        )
+                    except:
+                        gps_data["fix"] = "0"
 
                     if not sat_count_flag:
                         continue
                     nsats = 0
-                    while parsed_data is not None and parsed_data.msgID == "GSA":
+                    while (
+                        isinstance(parsed_data, NMEAMessage)
+                        and parsed_data.msgID == "GSA"
+                    ):
                         nsats += count_sats(parsed_data)
                         _, parsed_data = nmr.read()
-                    if parsed_data is not None:
+                    if isinstance(parsed_data, NMEAMessage):
                         gps_data["nsats"] = nsats
                     else:
                         sat_count_flag = False
+                elif "D" in gps_data["fix"] and parsed_data.msgID == "ZDA":
+                    try:
+                        gps_data["time"] = parsed_data.time
+                    except:
+                        gps_data["time"] = "00:00:00"
+                    try:
+                        gps_data["year"] = str(parsed_data.year)
+                    except:
+                        gps_data["year"] = "0000"
+                    try:
+                        gps_data["month"] = str(parsed_data.month)
+                    except:
+                        gps_data["month"] = "00"
+                    try:
+                        gps_data["day"] = str(parsed_data.day)
+                    except:
+                        gps_data["day"] = "00"
                 else:
                     sat_count_flag = True
     else:
@@ -96,18 +142,22 @@ def gps_reader():
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 19, "Grape2 GPS Diagnostic v1.0")
+    saddstr(stdscr, 0, 19, "Grape2 GPS Diagnostic v1.1")
     nextrow = 1
     return nextrow
 
 def print_datetime_widget(stdscr, row):
-    saddstr(stdscr, row + 1, 0, "GPS Date/Time")
+    saddstr(stdscr, row + 1, 0, "GPS UTC Date/Time")
     return row + 2
 
 
 def print_gps_time(stdscr, row):
-    sys_datetime = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-    saddstr(stdscr, row + 1, 22, sys_datetime)
+    saddstr(
+        stdscr,
+        row + 1,
+        22,
+        f"{gps_data['month'].zfill(2)}/{gps_data['day'].zfill(2)}/{gps_data['year'].zfill(4)} {gps_data['time']}",
+    )
     return row + 2
 
 
