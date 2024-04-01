@@ -12,7 +12,6 @@ from serial import Serial
 from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
-
 # Constants for modes
 MODE_DAILY = "daily"
 MODE_HOURLY = "hourly"

@@ -8,7 +8,6 @@ from serial import Serial
 from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
-
 gps_data = {
     "time": "00:00:00",
     "day": "00",
