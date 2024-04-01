@@ -33,11 +33,17 @@
 03-07-24  Ver 2.22 Fixed running datactrlr from ~/G2User/ issue
 03-08-24  Ver 2.23 Fixed another running datactrlr from ~/G2User/ issue
 03-14-24  Ver 2.24 Added reading FW version of magdata, setting file system params of G2DATA drive (check for mounting as well)
+03-18-24  Ver 2.25 Changed data read sequence change for version number retrieval by PICO
+04-01-24  Ver 2.26 Added A/D sample rate to Header files
 @author JCGibbons N8OBJ
 """
 
 # Define Software version of this code (so you don't have to search for it in the code!)
-SWVersion = '2.24'
+SWVersion = '2.26'
+
+# Indicate A/D sampple rate in headers
+SampleRate = '8000'
+#SampleRate = '8192'
 
 import os
 from os import path
@@ -103,17 +109,12 @@ if (path.exists(G2DATAndPath)):
     sys.exit(0)
 # if fileis covered up by mount, G2DATA is mounted
 else:
-    print('G2DATA is mounted - proceeding with Setup')
+    print('G2DATA is mounted - proceeding with Setup\n')
     print('Setting up system params for mounted /G2DATA/ drive')
-    #    print("Owner id of the file:", os.stat(homepath).st_uid)
-    #    print("Group id of the file:", os.stat(homepath).st_gid)
-    userid = os.stat(homepath).st_uid
-    groupid = os.stat(homepath).st_gid
     # set uid, gid  to be same as home directory
     os.system(f"sudo chown pi:pi {G2DATAPath}")
     os.system(f"sudo chmod 774 {G2DATAPath}")
 
-#sys.exit(0)
 ################################################################
 ################################################################
 
@@ -302,6 +303,7 @@ subprocess.run(
     ["sudo", "/home/pi/G2User/datactrlr"],
     stdin=open(fwinput_filename, "r"),
     stdout=open(fwoutput_filename, "w"),
+    stderr=subprocess.STDOUT
 )
 
 # run magdata -v to get version numberand append to previos data file
@@ -1382,6 +1384,7 @@ print('# Beacon 1 Now Decoded     ' + Beacon1)
 print('# Beacon 2 Now Decoded     ' + Beacon2)
 print('# Beacon 3 Now Decoded     ' + Beacon3)
 print('#')
+print('# A/D Sample Rate          ' + SampleRate)
 print('# A/D Zero Cal Data        ' + Zeros)
 print('#')
 print('#########################################################')
@@ -1421,6 +1424,7 @@ with open(PSWSInfoPath, 'w') as PSWSInfoFile:
     PSWSInfoFile.write('# Beacon 2 Now Decoded     ' + Beacon2 + '\n') #write data line
     PSWSInfoFile.write('# Beacon 3 Now Decoded     ' + Beacon3 + '\n') #write data line
     PSWSInfoFile.write('#\n') #write data line
+    PSWSInfoFile.write('# A/D Sample Rate          ' + SampleRate + '\n') #write sample rate
     PSWSInfoFile.write('# A/D Zero Cal Data        ' + Zeros + '\n') #write cal zeros data line
     PSWSInfoFile.write('#\n') #write data line
     PSWSInfoFile.write('######################################################\n') #write data line
@@ -1459,6 +1463,7 @@ with open(R1HdrPth, 'w') as R1HdrFile:
     R1HdrFile.write(f"# Picorun Version          {picorun_version}" + '\n')
     R1HdrFile.write(f"# magdata Version          {magdata_version}" + '\n')
     R1HdrFile.write('# PSWSsetup Version        ' + SWVersion + '\n')
+    R1HdrFile.write('# A/D Sample RAte          ' + SampleRate + '\n')
     R1HdrFile.write('#\n') #write data line
     R1HdrFile.write('# Beacon 1 Now Decoded     ' + Beacon1 + '\n') #write data line
     R1HdrFile.write('#\n') #write data line
@@ -1496,6 +1501,7 @@ with open(R2HdrPth, 'w') as R2HdrFile:
     R2HdrFile.write(f"# Picorun Version          {picorun_version}" + '\n')
     R2HdrFile.write(f"# magdata Version          {magdata_version}" + '\n')
     R2HdrFile.write('# PSWSsetup Version        ' + SWVersion + '\n')
+    R2HdrFile.write('# A/D Sample RAte          ' + SampleRate + '\n')
     R2HdrFile.write('#\n') #write data line
     R2HdrFile.write('# Beacon 2 Now Decoded     ' + Beacon2 + '\n') #write data line
     R2HdrFile.write('#\n') #write data line
@@ -1532,6 +1538,7 @@ with open(R3HdrPth, 'w') as R3HdrFile:
     R3HdrFile.write(f"# Picorun Version          {picorun_version}" + '\n')
     R3HdrFile.write(f"# magdata Version          {magdata_version}" + '\n')
     R3HdrFile.write('# PSWSsetup Version        ' + SWVersion + '\n')
+    R3HdrFile.write('# A/D Sample RAte          ' + SampleRate + '\n')
     R3HdrFile.write('#\n') #write data line
     R3HdrFile.write('# Beacon 3 Now Decoded     ' + Beacon3 + '\n') #write data line
     R3HdrFile.write('#\n') #write data line
