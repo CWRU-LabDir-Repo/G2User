@@ -1,4 +1,8 @@
 #!/bin/bash
-# 00:15 crontab job for root 
+# 23:45 crontab job for root 
 date
-echo Hello 23:15!
+echo crontab 23:45 job - pull in repo exact copy
+cd /home/pi/G2User/
+git fetch
+git reset --hard HEAD
+git merge '@{u}'
