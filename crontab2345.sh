@@ -6,6 +6,4 @@ cd /home/pi/G2User/
 git fetch
 git reset --hard HEAD
 git merge '@{u}'
-# fix crontab job
-/home/pi/G2User/g2plot-crontab-fix.sh
 
