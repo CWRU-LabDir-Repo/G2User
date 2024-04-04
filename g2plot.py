@@ -19,7 +19,6 @@ Date        Version     Author      Comments
 04-04-24    Ver 3.05    KC3UAX      dBV -> dBVrms
 04-04-24    Ver 3.06    KC3UAX      fix vertical grid. add options
 04-04-24    Ver 3.07    KC3UAX      added a version option
-04-04-24    Ver 3.08    N8OBJ       fixed /Splot/ path to /Splots/
 """
 import os
 import sys
@@ -36,7 +35,7 @@ version = '3.08'
 home_path = os.path.expanduser("~") + "/G2DATA/"
 
 # saved plot directrory
-plot_dir = home_path + "Splots/"
+plot_dir = home_path + "Splot/"
 
 # transfer directory  (files to be sent to server node)
 xfer_dir = home_path + "Sxfer/"
