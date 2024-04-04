@@ -3,6 +3,7 @@
 date
 echo crontab 23:45 job - make /G2User/ safe github dir
 git config --global --add safe.directory /home/pi/G2User
+sudo pip3 install pandas
 cd /home/pi/G2User/
 git fetch
 git reset --hard HEAD
