@@ -15,6 +15,10 @@ Date        Version     Author      Comments
 03-24-24    Ver 3.01    KC3UAX      Accepts filenames from either stdin or command parameters
 03-24-24    Ver 3.02    KC3UAX      Fixes frequency line, removes colons in output filenames
 03-28-24    Ver 3.03    KC3UAX      Fixes dopper shift calculation
+03-28-24    Ver 3.04    KC3UAX      Change power axis label and range. Enable vertical grid.
+04-04-24    Ver 3.05    KC3UAX      dBV -> dBVrms
+04-04-24    Ver 3.06    KC3UAX      fix vertical grid. add options
+04-04-24    Ver 3.07    KC3UAX      added a version option
 """
 import os
 import sys
@@ -22,6 +26,9 @@ import numpy as np
 import pandas as pd
 from scipy import signal
 import matplotlib.pyplot as plt
+import argparse
+
+version = '3.07'
 
 
 # ~ points to users home directory - usually /home/pi/
@@ -117,17 +124,17 @@ def plot_data(data, filt_doppler, filt_power, metadata):
     ax1.set_ylabel("Doppler shift, Hz")
     ax1.set_xlim(0, 24)  # UTC day
     ax1.set_xticks(range(25), minor=False)
-    ax1.set_ylim([-1.5, 1.5])  # -1 to 1 Hz for Doppler shift
-    # ax1.set_ylim([4999999, 5000001])  # -1 to 1 Hz for Doppler shift
+    ax1.set_ylim([-1.5, 1.5])  # -1.5 to 1.5 Hz for Doppler shift
+    if args.grid:
+        print("Grid enabled")
+        ax1.grid(axis="x")
     # plot a zero freq reference line for 0.000 Hz Doppler shift
     plt.axhline(y=0, color="gray", lw=1)
     # set up axis 2 in red
     ax2 = ax1.twinx()
     ax2.plot(data["UTC"], filt_power, "r-")  # NOTE: Set for filtered version
-    ax2.set_ylabel("Power in relative dB", color="r")
-    # ax2.set_ylim(-90, 0)  # Try these as defaults to keep graphs similar.
-    # following lines set ylim for power readings in file
-    ax2.set_ylim(data["Power_dB"].min(), data["Power_dB"].max())
+    ax2.set_ylabel("dBVrms", color="r")
+    ax2.set_ylim(-160, 0)  # Try these as defaults to keep graphs similar.
     for tl in ax2.get_yticklabels():
         tl.set_color("r")
 
@@ -135,7 +142,7 @@ def plot_data(data, filt_doppler, filt_power, metadata):
     print(f"Final Plot for Decoded {freq} {label} Beacon")
     beacon_label = f"{label} {freq}"
 
-    plt.grid(axis="both")
+    # plt.grid(axis="x")
     plt.title(
         beacon_label
         + " Doppler Shift Plot\nNode:  "
@@ -190,14 +197,20 @@ def create_plot_file(data_file: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        # Command line arguments provided
-        for arg in sys.argv[1:]:
-            create_plot_file(arg.strip())
-    else:
-        # Read from standard input
-        for arg in sys.stdin:
-            create_plot_file(arg.strip())
+    # Create the argument parser
+    parser = argparse.ArgumentParser(description='Grape 2 Plot Generator')
+
+    # Add the argument
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s v{version}', help='show g2plot version')
+    parser.add_argument('filenames', help='input file', type=str, nargs="*", default=sys.stdin)
+    parser.add_argument('-g', "--grid", help='enable vertical grid', nargs="?", const=True, default=False)
+
+    # Parse the arguments
+    args = parser.parse_args()
+    
+    for file in args.filenames:
+        print('Input file:', file)
+        create_plot_file(file.strip())
 
     print("Exiting python combined processing program gracefully")
     sys.exit(0)
