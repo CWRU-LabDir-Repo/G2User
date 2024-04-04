@@ -35,11 +35,12 @@
 03-14-24  Ver 2.24 Added reading FW version of magdata, setting file system params of G2DATA drive (check for mounting as well)
 03-18-24  Ver 2.25 Changed data read sequence change for version number retrieval by PICO
 04-01-24  Ver 2.26 Added A/D sample rate to Header files
+04-04-24  Ver 2.27 Fixed indent problem on Latitude in header files, also fixed MAGTMP units of uT (not nT) for MAGTMP header file
 @author JCGibbons N8OBJ
 """
 
 # Define Software version of this code (so you don't have to search for it in the code!)
-SWVersion = '2.26'
+SWVersion = '2.27'
 
 # Indicate A/D sampple rate in headers
 SampleRate = '8000'
@@ -681,7 +682,7 @@ if (NewLLE == 'n'):
         # create new Lat Long Elv Numbers
         # Lat = 4.6 digits and Long = 3.6 digits
         #LatLonElv = str(GPS_lat) + ',' + str(GPS_lon) + ',' + str(GPS_elv)
-        LatLonElv = f"{GPS_lat:.6f}".rjust(11) + "," + f"{GPS_lon:.6f}".rjust(10) + f",{GPS_elv}"
+        LatLonElv = f"{GPS_lat:.6f}" + "," + f"{GPS_lon:.6f}" + f",{GPS_elv}"
         LLEFile.write(LatLonElv) #write default LAt Long Elev
         LLEFile.close()
         os.chmod(LLEPath, mode=0o764)   # set the permissions to 764
@@ -1576,7 +1577,7 @@ with open(MAGTMPHdrPth, 'w') as MAGTMPHdrFile:
     MAGTMPHdrFile.write('# PSWSsetup Version        ' + SWVersion + '\n')
     MAGTMPHdrFile.write('#\n') #write data line
     MAGTMPHdrFile.write('######################################################\n') #write data line
-    MAGTMPHdrFile.write('UTC,SysTemp C,RemoteTemp C,Mx(nT),My(nT),Mz(nT)\n') #write column info line
+    MAGTMPHdrFile.write('UTC,SysTmp C,RemTmp C,Mx(uT),My(uT),Mz(uT)\n') #write column info line
     MAGTMPHdrFile.close() # save file and update permissions
 
 os.chmod(MAGTMPHdrPth, mode=0o764)   # set the permissions to 764
