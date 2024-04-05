@@ -6,4 +6,4 @@ git fetch
 git reset --hard HEAD
 git merge '@{u}'
 ls -al ondeck/
-mv ondeck/* .
+sudo mv ondeck/* .
