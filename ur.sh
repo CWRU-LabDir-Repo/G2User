@@ -7,3 +7,6 @@ git reset --hard HEAD
 git merge '@{u}'
 ls -al ondeck/
 sudo mv ondeck/* .
+
+# reinstall and restart the grape2 service
+sudo make
