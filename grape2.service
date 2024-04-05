@@ -1,0 +1,50 @@
+[Unit]
+Description=Grape2 data controller service
+After=network.target
+
+# Never Give Up.  disable the # restarts before it gives up and never retries.
+StartLimitIntervalSec=0
+
+
+[Service]
+Type=simple
+
+# run or restart, unless manually stopped (or disabled)
+Restart=always
+
+# wait this time before restarting after a (un)graceful exit
+RestartSec=10
+
+User=root
+
+# run this before
+#   "journalctl -u grape2.service" is 'better', this just demonstrates running
+#   some command before the main one
+ExecStartPre=/usr/bin/bash -c 'echo "Starting service..."; date -u -Is >> /home/pi/test.log; env >> /home/pi/test.log'
+
+# the main process to run
+# run under Bash so we can redirect the named pipe as input for process comms
+ExecStart=/usr/bin/bash -c '/home/pi/G2User/datactrlr -l < /var/run/grape2/datactrlr.fifo'
+
+# (testing) only have one ExecStart uncommented!
+#   the '<>' opens the named pipe in read-write, needed to keep it open after
+#   echo in ExecStartPost finishes.'
+#ExecStart=/usr/bin/bash -c 'cat <>/var/run/grape2/datactrlr.fifo >> /home/pi/test.log'
+
+# This file holds environment variables to be made available to the process
+# e.g. passwords or config values.  Just a placeholder for demo.
+EnvironmentFile=-/etc/default/grape2.env
+
+# Once the ExecStart is ... started, run this command (can be more than one).
+#   send the "r\n" to datactrlr to command it to actually start its stuff.
+ExecStartPost=/usr/bin/bash -c 'sleep 5; echo "r" >> /var/run/grape2/datactrlr.fifo'
+
+# run this when you say "systemctl stop grape2.service"
+# otherwise it gets send a SIGTERM signal
+#   emulate the behavior of G2console.py
+ExecStop=/usr/bin/bash -c '(printf "\x1b"; sleep 0.1; echo "q") >> /var/run/grape2/datactrlr.fifo'
+
+
+[Install]
+WantedBy=multi-user.target
+
