@@ -489,6 +489,9 @@ def update_ui(stdscr):
     saddstr(
         stdscr, end_of_mag + 2, 6, "<ctrl-p> = toggle for 1Hr/24Hr Min/Max            "
     )
+    saddstr(
+        stdscr, end_of_mag + 3, 6, "<ctrl-c> to exit, not changing the Data Controller"
+    )
 
     program_name = "datactrlr"
     while not is_process_running(program_name):
@@ -510,33 +513,18 @@ def update_ui(stdscr):
             )
             stdscr.refresh()
 
-            datactrlr = subprocess.Popen(
-                ["sudo", "/home/pi/G2User/datactrlr", "-l"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-
-            datactrlr.stdin.write(b"r\n")
-            datactrlr.stdin.flush()
-
+            subprocess.run(["sudo systemctl start grape2.service"],
+                shell=True)
             break
 
-    if not "datactrlr" in locals():
+    if is_process_running(program_name):
         saddstr(
             stdscr,
             end_of_mag + 1,
             6,
-            "Data Controller is running in another terminal",
+            "Data Controller running.  <ctrl-x> to stop    ",
         )
         stdscr.refresh()
-    else:
-        saddstr(
-            stdscr,
-            end_of_mag + 1,
-            6,
-            "<ctrl-x> = terminate Data Controller              ",
-        )
 
     data_reader_thread = threading.Thread(target=data_reader)
     data_reader_thread.start()
@@ -557,7 +545,7 @@ def update_ui(stdscr):
 
                 char = stdscr.getch()
                 if char != curses.ERR and char == 24:
-                    if "datactrlr" in locals():
+                    if is_process_running(program_name):
                         saddstr(
                             stdscr,
                             end_of_mag + 1,
@@ -565,11 +553,8 @@ def update_ui(stdscr):
                             "Stopping the Data Controller...                    ",
                         )
                         stdscr.refresh()
-                        datactrlr.stdin.write(b"\x1b")
-                        datactrlr.stdin.flush()
-                        time.sleep(0.1)
-                        datactrlr.stdin.write(b"q\n")
-                        datactrlr.stdin.flush()
+                        subprocess.run(["sudo systemctl stop grape2.service"],
+                            shell=True)
                     else:
                         saddstr(
                             stdscr,
