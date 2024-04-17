@@ -1,3 +1,4 @@
+import argparse
 import os
 import re
 import json
@@ -11,6 +12,8 @@ from collections import deque
 from serial import Serial
 from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
+
+version = "12.11"
 
 # Constants for modes
 MODE_DAILY = "daily"
@@ -280,7 +283,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, "Grape2 Console v12.10")
+    saddstr(stdscr, 0, 22, f"Grape2 Console {version}")
     saddstr(stdscr, 1, 24, "Node: ")
     with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
         saddstr(stdscr, 1, 30, file.readline().strip())
@@ -501,7 +504,7 @@ def update_ui(stdscr):
         stdscr.refresh()
 
         char = stdscr.getch()
-        if char != curses.ERR and char == 114:  # statmon detected r
+        if (char != curses.ERR and char == 114) or (args.autorun):  # statmon detected r
             saddstr(
                 stdscr,
                 end_of_mag + 1,
@@ -519,8 +522,7 @@ def update_ui(stdscr):
 
             datactrlr.stdin.write(b"r\n")
             datactrlr.stdin.flush()
-
-            break
+            time.sleep(0.1)
 
     if not "datactrlr" in locals():
         saddstr(
@@ -570,6 +572,7 @@ def update_ui(stdscr):
                         time.sleep(0.1)
                         datactrlr.stdin.write(b"q\n")
                         datactrlr.stdin.flush()
+                        time.sleep(0.1)
                     else:
                         saddstr(
                             stdscr,
@@ -608,6 +611,22 @@ def main(stdscr):
 
 
 if __name__ == "__main__":
+    # Create the argument parser
+    parser = argparse.ArgumentParser(description="Grape 2 Console")
+
+    # Add the argument
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s v{version}",
+        help="show g2console version",
+    )
+    parser.add_argument("-r", "--autorun", help="enable autorun", action="store_true")
+
+    # Parse the arguments
+    args = parser.parse_args()
+
     pipe_path = "/home/pi/PSWS/Sstat/datamon.fifo"
     log_path = "/home/pi/G2DATA/Slogs/"
     log_file = "console.log"

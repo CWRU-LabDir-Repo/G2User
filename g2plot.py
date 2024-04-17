@@ -28,7 +28,7 @@ from scipy import signal
 import matplotlib.pyplot as plt
 import argparse
 
-version = '3.08'
+version = "3.10"
 
 
 # ~ points to users home directory - usually /home/pi/
@@ -187,29 +187,47 @@ def create_plot_file(data_file: str):
     plot_graph_file = plot_dir + graph_file
     xfer_graph_file = xfer_dir + graph_file
 
+    print(
+        "Plot File: " + graph_file
+    )  # indicate plot file name for crontab printout
+
     # create plot
     plt.savefig(plot_graph_file, dpi=250, orientation="landscape")
-    plt.savefig(xfer_graph_file, dpi=250, orientation="landscape")
-
-    print(
-        "Plot File: " + graph_file + "\n"
-    )  # indicate plot file name for crontab printout
+    print("Plot saved to", plot_dir)
+    if args.xfer:
+        plt.savefig(xfer_graph_file, dpi=250, orientation="landscape")
+        print("Plot saved to", xfer_dir)
+        
+    print()
 
 
 if __name__ == "__main__":
     # Create the argument parser
-    parser = argparse.ArgumentParser(description='Grape 2 Plot Generator')
+    parser = argparse.ArgumentParser(description="Grape 2 Plot Generator")
 
     # Add the argument
-    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s v{version}', help='show g2plot version')
-    parser.add_argument('filenames', help='input file', type=str, nargs="*", default=sys.stdin)
-    parser.add_argument('-g', "--grid", help='enable vertical grid', nargs="?", const=True, default=False)
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s v{version}",
+        help="show g2plot version",
+    )
+    parser.add_argument(
+        "filenames", help="input file", type=str, nargs="*", default=sys.stdin
+    )
+    parser.add_argument(
+        "-g", "--grid", help="enable vertical grid", action="store_true"
+    )
+    parser.add_argument(
+        "-x", "--xfer", help="enable creating plots in the xfer directory to be uploaded to server", action="store_true"
+    )
 
     # Parse the arguments
     args = parser.parse_args()
-    
+
     for file in args.filenames:
-        print('Input file:', file)
+        print("Input file:", file)
         create_plot_file(file.strip())
 
     print("Exiting python combined processing program gracefully")
