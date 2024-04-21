@@ -1,0 +1,5 @@
+# Place this file in /home/pi/.config/lxsession/LXDE-pi to start G2console at login.
+@lxpanel --profile LXDE-pi
+@pcmanfm --desktop --profile LXDE-pi
+@xscreensaver -no-splash
+@lxterminal --geometry=59x39 -e python3 /home/pi/G2User/G2console.py -r
