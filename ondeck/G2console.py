@@ -13,11 +13,11 @@ from serial import Serial
 from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
-version = "12.11"
+version = "12.12"
 
 # Constants for modes
-MODE_DAILY = "daily"
-MODE_HOURLY = "hourly"
+MODE_DAILY = 0
+MODE_HOURLY = 1
 
 
 def is_process_running(process_name):
@@ -103,7 +103,7 @@ gps_data = {
     "nsats": 0,
 }
 exited = False
-mode = MODE_HOURLY
+mode = MODE_DAILY
 
 
 def saddstr(stdscr, y, x, string):
