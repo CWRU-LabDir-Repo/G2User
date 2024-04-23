@@ -19,16 +19,23 @@ Date        Version     Author      Comments
 04-04-24    Ver 3.05    KC3UAX      dBV -> dBVrms
 04-04-24    Ver 3.06    KC3UAX      fix vertical grid. add options
 04-04-24    Ver 3.07    KC3UAX      added a version option
+04-15-24    Ver 3.09    KC3UAX      grid enable option now can be specified either before or after filenames, and require no argument
+04-16-24    Ver 3.10    KC3UAX      added -x option to enable creating plots in the xfer directory
+04-22-24    Ver 3.11    KC3UAX      fixed multi-dimensional indexing end-of-support
+04-24-24    Ver 4.0     KC3UAX      Added magtmp plot generator and suppress DeprecationWarning (PyArrow)
 """
 import os
 import sys
 import numpy as np
 import pandas as pd
+import warnings
 from scipy import signal
 import matplotlib.pyplot as plt
 import argparse
 
-version = "3.10"
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+version = "4.0"
 
 
 # ~ points to users home directory - usually /home/pi/
@@ -67,7 +74,7 @@ def read_file(data_file: str):
     metadata = {}
     with open(data_file, "r") as file:
         header = file.readline().strip().split(",")
-        metadata["UTCDTZ"] = header[1]
+        metadata["UTCDTZ"] = header[1].replace(":", "")
         metadata["UTC_DT"] = header[1][:10]
         metadata["Node"] = header[2]
         metadata["GridSqr"] = header[3]
@@ -75,20 +82,27 @@ def read_file(data_file: str):
         metadata["Long"] = header[5]
         metadata["Elev"] = header[6]
         metadata["CityState"] = header[7]
-        metadata["RadioID"] = header[8]
-        metadata["Beacon"] = header[9]
-        metadata["UTCDTZ"] = metadata["UTCDTZ"].replace(":", "")
+        if "MAGTMP" not in data_file:
+            metadata["RadioID"] = header[8]
+            metadata["Beacon"] = header[9]
         data = pd.read_csv(file, comment="#")
     return data, metadata
 
 
 def process_data(data: pd.DataFrame):
-    SQRT2 = np.sqrt(2)
     data["UTC"] = data["UTC"].apply(lambda x: time_string_to_decimals(x))
-    data["Power_dB"] = 20 * np.log(data["Vrms"] / SQRT2)
+    if any("Mag" in col for col in data.columns):
+        # if any column contains Mag (for Magnetometer)
+        data["B(nT)"] = (
+            data["Mx(nT)"] ** 2 + data["My(nT)"] ** 2 + data["Mz(nT)"] ** 2
+        ) ** 0.5
+        print("B(nT) min: ", data["B(nT)"].min(), "; B(nT) max: ", data["B(nT)"].max())
+    else:
+        SQRT2 = np.sqrt(2)
+        data["Power_dB"] = 20 * np.log(data["Vrms"] / SQRT2)
 
-    print("Vrms min: ", data["Vrms"].min(), "; Vrms max: ", data["Vrms"].max())
-    print("dB min: ", data["Power_dB"].min(), "; dB max: ", data["Power_dB"].max())
+        print("Vrms min: ", data["Vrms"].min(), "; Vrms max: ", data["Vrms"].max())
+        print("dB min: ", data["Power_dB"].min(), "; dB max: ", data["Power_dB"].max())
 
 
 def create_filter(data: pd.DataFrame, beacon_freq):
@@ -112,7 +126,7 @@ def create_filter(data: pd.DataFrame, beacon_freq):
     return filt_doppler, filt_power
 
 
-def plot_data(data, filt_doppler, filt_power, metadata):
+def plot_radio_data(data, filt_doppler, filt_power, metadata):
     ##%% modified from "Double-y axis plot,
     ## http://kitchingroup.cheme.cmu.edu/blog/2013/09/13/Plotting-two-datasets-with-very-different-scales/
 
@@ -142,7 +156,6 @@ def plot_data(data, filt_doppler, filt_power, metadata):
     print(f"Final Plot for Decoded {freq} {label} Beacon")
     beacon_label = f"{label} {freq}"
 
-    # plt.grid(axis="x")
     plt.title(
         beacon_label
         + " Doppler Shift Plot\nNode:  "
@@ -161,7 +174,38 @@ def plot_data(data, filt_doppler, filt_power, metadata):
     )
 
 
-def create_plot_file(data_file: str):
+def plot_mag_data(data: pd.DataFrame, metadata):
+    # set up x-axis with time
+    fig = plt.figure(figsize=(19, 10))  # inches x, y with 72 dots per inch
+    ax = fig.add_subplot(111)
+    ax.plot(data["UTC"], data["B(nT)"], "k")  # color k for black
+    ax.set_xlabel("UTC Hour")
+    ax.set_ylabel("B(nT)")
+    ax.set_xlim(0, 24)  # UTC day
+    ax.set_xticks(range(25), minor=False)
+    # ax.set_ylim([-1.5, 1.5])
+    if args.grid:
+        print("Grid enabled")
+        ax.grid(axis="x")
+
+    plt.title(
+        "Magnetometer Plot\nNode:  "
+        + metadata["Node"]
+        + "     Gridsquare:  "
+        + metadata["GridSqr"]
+        + "\nLat= "
+        + metadata["Lat"]
+        + "    Long= "
+        + metadata["Long"]
+        + "    Elev= "
+        + metadata["Elev"]
+        + " m\n"
+        + metadata["UTC_DT"]
+        + "  UTC"
+    )
+
+
+def create_radio_plot_file(data_file: str):
     data, metadata = read_file(data_file)
 
     print("Ready to start processing records")
@@ -170,7 +214,7 @@ def create_plot_file(data_file: str):
     filt_doppler, filt_power = create_filter(
         data, float(beacon_frequencies[metadata["Beacon"]][0].split()[0]) * 10**6
     )
-    plot_data(data, filt_doppler, filt_power, metadata)
+    plot_radio_data(data, filt_doppler, filt_power, metadata)
 
     graph_file = (
         metadata["UTCDTZ"]
@@ -187,9 +231,7 @@ def create_plot_file(data_file: str):
     plot_graph_file = plot_dir + graph_file
     xfer_graph_file = xfer_dir + graph_file
 
-    print(
-        "Plot File: " + graph_file
-    )  # indicate plot file name for crontab printout
+    print("Plot File: " + graph_file)  # indicate plot file name for crontab printout
 
     # create plot
     plt.savefig(plot_graph_file, dpi=250, orientation="landscape")
@@ -197,7 +239,38 @@ def create_plot_file(data_file: str):
     if args.xfer:
         plt.savefig(xfer_graph_file, dpi=250, orientation="landscape")
         print("Plot saved to", xfer_dir)
-        
+
+    print()
+
+
+def create_mag_plot_file(data_file: str):
+    data, metadata = read_file(data_file)
+
+    print("Ready to start processing records")
+    process_data(data)
+
+    plot_mag_data(data, metadata)
+
+    graph_file = (
+        metadata["UTCDTZ"]
+        + "_"
+        + metadata["Node"]
+        + "_"
+        + metadata["GridSqr"]
+        + "_MAGTMP_graph.png"
+    )
+    plot_graph_file = plot_dir + graph_file
+    xfer_graph_file = xfer_dir + graph_file
+
+    print("Plot File: " + graph_file)  # indicate plot file name for crontab printout
+
+    # create plot
+    plt.savefig(plot_graph_file, dpi=250, orientation="landscape")
+    print("Plot saved to", plot_dir)
+    if args.xfer:
+        plt.savefig(xfer_graph_file, dpi=250, orientation="landscape")
+        print("Plot saved to", xfer_dir)
+
     print()
 
 
@@ -220,7 +293,10 @@ if __name__ == "__main__":
         "-g", "--grid", help="enable vertical grid", action="store_true"
     )
     parser.add_argument(
-        "-x", "--xfer", help="enable creating plots in the xfer directory to be uploaded to server", action="store_true"
+        "-x",
+        "--xfer",
+        help="enable creating plots in the xfer directory to be uploaded to server",
+        action="store_true",
     )
 
     # Parse the arguments
@@ -228,7 +304,10 @@ if __name__ == "__main__":
 
     for file in args.filenames:
         print("Input file:", file)
-        create_plot_file(file.strip())
+        if "MAGTMP" in file:
+            create_mag_plot_file(file.strip())
+        else:
+            create_radio_plot_file(file.strip())
 
     print("Exiting python combined processing program gracefully")
     sys.exit(0)
