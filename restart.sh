@@ -17,7 +17,7 @@ then
     echo Restarting G2console...
     export DISPLAY=:0
     export XAUTHORITY=/home/pi/.Xauthority
-    lxterminal -t G2console --geometry=59x39 -e python3 /home/pi/G2User/G2console.py -r
+    lxterminal -t G2console --geometry=59x39 -e python3 /home/pi/G2User/G2console.py -r &
 fi
 
 echo restart.sh ended
