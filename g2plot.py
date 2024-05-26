@@ -23,6 +23,10 @@ Date        Version     Author      Comments
 04-16-24    Ver 3.10    KC3UAX      added -x option to enable creating plots in the xfer directory
 04-22-24    Ver 3.11    KC3UAX      fixed multi-dimensional indexing end-of-support
 04-24-24    Ver 4.0     KC3UAX      Added magtmp plot generator and suppress DeprecationWarning (PyArrow)
+04-25-24    Ver 4.1     KC3UAX      Fixed bugs, improved performance, and added filtering to mag data
+04-29-24    Ver 4.2     KC3UAX      Added rolling average and remote temp
+05-22-24    Ver 5.0     KC3UAX      Added plotting 3 mag components separately
+05-23-24    Ver 5.1     KC3UAX      Modifed magnetometer plots: font size, added mean to legend
 """
 import os
 import sys
@@ -30,12 +34,16 @@ import numpy as np
 import pandas as pd
 import warnings
 from scipy import signal
+import matplotlib
 import matplotlib.pyplot as plt
 import argparse
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+# configure non-interactive backend to speed plot saving
+matplotlib.use("Agg")
+plt.rcParams["font.size"] = 13
 
-version = "4.0"
+version = "5.1"
 
 
 # ~ points to users home directory - usually /home/pi/
@@ -91,12 +99,14 @@ def read_file(data_file: str):
 
 def process_data(data: pd.DataFrame):
     data["UTC"] = data["UTC"].apply(lambda x: time_string_to_decimals(x))
-    if any("Mag" in col for col in data.columns):
+    if any("Mx" in col for col in data.columns):
         # if any column contains Mag (for Magnetometer)
         data["B(nT)"] = (
-            data["Mx(nT)"] ** 2 + data["My(nT)"] ** 2 + data["Mz(nT)"] ** 2
+              (data["Mx(uT)"]*1000) ** 2
+            + (data["My(uT)"]*1000) ** 2
+            + (data["Mz(uT)"]*1000) ** 2
         ) ** 0.5
-        print("B(nT) min: ", data["B(nT)"].min(), "; B(nT) max: ", data["B(nT)"].max())
+        print("Raw B(nT) min: ", data["B(nT)"].min(), "; Raw B(nT) max: ", data["B(nT)"].max())
     else:
         SQRT2 = np.sqrt(2)
         data["Power_dB"] = 20 * np.log(data["Vrms"] / SQRT2)
@@ -174,22 +184,50 @@ def plot_radio_data(data, filt_doppler, filt_power, metadata):
     )
 
 
-def plot_mag_data(data: pd.DataFrame, metadata):
+def plot_component_mag_data(data: pd.DataFrame, metadata):
+    xmean = data["Mx(uT)"].mean()
+    ymean = data["My(uT)"].mean()
+    zmean = data["Mz(uT)"].mean()
+    x_centered = (data["Mx(uT)"] - xmean).rolling(60).mean()*1000
+    y_centered = (data["My(uT)"] - ymean).rolling(60).mean()*1000
+    z_centered = (data["Mz(uT)"] - zmean).rolling(60).mean()*1000
+    print(
+        "∆Bx(nT) min: ",
+        x_centered.min(),
+        "; ∆Bx(nT) max: ",
+        x_centered.max(),
+    )
+    print(
+        "∆By(nT) min: ",
+        y_centered.min(),
+        "; ∆By(nT) max: ",
+        y_centered.max(),
+    )
+    print(
+        "∆Bz(nT) min: ",
+        z_centered.min(),
+        "; ∆Bz(nT) max: ",
+        z_centered.max(),
+    )    
+    
     # set up x-axis with time
     fig = plt.figure(figsize=(19, 10))  # inches x, y with 72 dots per inch
-    ax = fig.add_subplot(111)
-    ax.plot(data["UTC"], data["B(nT)"], "k")  # color k for black
-    ax.set_xlabel("UTC Hour")
-    ax.set_ylabel("B(nT)")
-    ax.set_xlim(0, 24)  # UTC day
-    ax.set_xticks(range(25), minor=False)
+    ax1 = fig.add_subplot(111)
+    ax1.plot(data["UTC"], x_centered, "k", label=f"Bx (Mean: {round(xmean*1000)}nT)")  # color k for black
+    ax1.plot(data["UTC"], y_centered, "r", label=f"By (Mean: {round(ymean*1000)}nT)")  # color k for black
+    ax1.plot(data["UTC"], z_centered, "b", label=f"Bz (Mean: {round(zmean*1000)}nT)")  # color k for black
+    ax1.legend() 
+    ax1.set_xlabel("UTC Hour")
+    ax1.set_ylabel("∆B(nT)")
+    ax1.set_xlim(0, 24)  # UTC day
+    ax1.set_xticks(range(25), minor=False)
     # ax.set_ylim([-1.5, 1.5])
     if args.grid:
         print("Grid enabled")
-        ax.grid(axis="x")
+        ax1.grid(axis="x")
 
     plt.title(
-        "Magnetometer Plot\nNode:  "
+        "Magnetometer Plot (Component)\nNode:  "
         + metadata["Node"]
         + "     Gridsquare:  "
         + metadata["GridSqr"]
@@ -203,6 +241,91 @@ def plot_mag_data(data: pd.DataFrame, metadata):
         + metadata["UTC_DT"]
         + "  UTC"
     )
+
+    graph_file = (
+        metadata["UTCDTZ"]
+        + "_"
+        + metadata["Node"]
+        + "_"
+        + metadata["GridSqr"]
+        + "_MAGTMP_COMPONENT.png"
+    )
+    plot_graph_file = plot_dir + graph_file
+    xfer_graph_file = xfer_dir + graph_file
+
+    print("Plot File: " + graph_file)  # indicate plot file name for crontab printout
+
+    # create plot
+    plt.savefig(plot_graph_file, dpi=100, orientation="landscape")
+    print("Plot saved to", plot_dir)
+    if args.xfer:
+        plt.savefig(xfer_graph_file, dpi=100, orientation="landscape")
+        print("Plot saved to", xfer_dir)
+
+    print()
+
+
+def plot_composite_mag_data(data: pd.DataFrame, metadata):
+    composite_mag = data["B(nT)"].rolling(60).mean()
+    print("Composite mag min: ", composite_mag.min(), "; Composite mag max: ", composite_mag.max())
+    
+    # set up x-axis with time
+    fig = plt.figure(figsize=(19, 10))  # inches x, y with 72 dots per inch
+    ax1 = fig.add_subplot(111)
+    ax1.plot(data["UTC"], composite_mag, "k")  # color k for black
+    ax1.set_xlabel("UTC Hour")
+    ax1.set_ylabel("B(nT)")
+    ax1.set_xlim(0, 24)  # UTC day
+    ax1.set_xticks(range(25), minor=False)
+    # ax.set_ylim([-1.5, 1.5])
+    if args.grid:
+        print("Grid enabled")
+        ax1.grid(axis="x")
+
+    ax2 = ax1.twinx()
+    ax2.plot(
+        data["UTC"], data["RemTmp C"].rolling(120).mean(), "r-"
+    )  # NOTE: Set for filtered version
+    ax2.set_ylabel("Remote Temperature (C)", color="r")
+    # ax2.set_ylim(-160, 0)
+    for tl in ax2.get_yticklabels():
+        tl.set_color("r")
+
+    plt.title(
+        "Magnetometer Plot (Composite)\nNode:  "
+        + metadata["Node"]
+        + "     Gridsquare:  "
+        + metadata["GridSqr"]
+        + "\nLat= "
+        + metadata["Lat"]
+        + "    Long= "
+        + metadata["Long"]
+        + "    Elev= "
+        + metadata["Elev"]
+        + " m\n"
+        + metadata["UTC_DT"]
+        + "  UTC"
+    )
+
+    graph_file = (
+        metadata["UTCDTZ"]
+        + "_"
+        + metadata["Node"]
+        + "_"
+        + metadata["GridSqr"]
+        + "_MAGTMP_COMPOSITE.png"
+    )
+    plot_graph_file = plot_dir + graph_file
+    xfer_graph_file = xfer_dir + graph_file
+
+    print("Plot File: " + graph_file)  # indicate plot file name for crontab printout
+
+    # create plot
+    plt.savefig(plot_graph_file, dpi=100, orientation="landscape")
+    print("Plot saved to", plot_dir)
+    if args.xfer:
+        plt.savefig(xfer_graph_file, dpi=100, orientation="landscape")
+        print("Plot saved to", xfer_dir)
 
 
 def create_radio_plot_file(data_file: str):
@@ -234,13 +357,11 @@ def create_radio_plot_file(data_file: str):
     print("Plot File: " + graph_file)  # indicate plot file name for crontab printout
 
     # create plot
-    plt.savefig(plot_graph_file, dpi=250, orientation="landscape")
+    plt.savefig(plot_graph_file, dpi=100, orientation="landscape")
     print("Plot saved to", plot_dir)
     if args.xfer:
-        plt.savefig(xfer_graph_file, dpi=250, orientation="landscape")
+        plt.savefig(xfer_graph_file, dpi=100, orientation="landscape")
         print("Plot saved to", xfer_dir)
-
-    print()
 
 
 def create_mag_plot_file(data_file: str):
@@ -248,30 +369,11 @@ def create_mag_plot_file(data_file: str):
 
     print("Ready to start processing records")
     process_data(data)
-
-    plot_mag_data(data, metadata)
-
-    graph_file = (
-        metadata["UTCDTZ"]
-        + "_"
-        + metadata["Node"]
-        + "_"
-        + metadata["GridSqr"]
-        + "_MAGTMP_graph.png"
-    )
-    plot_graph_file = plot_dir + graph_file
-    xfer_graph_file = xfer_dir + graph_file
-
-    print("Plot File: " + graph_file)  # indicate plot file name for crontab printout
-
-    # create plot
-    plt.savefig(plot_graph_file, dpi=250, orientation="landscape")
-    print("Plot saved to", plot_dir)
-    if args.xfer:
-        plt.savefig(xfer_graph_file, dpi=250, orientation="landscape")
-        print("Plot saved to", xfer_dir)
-
     print()
+    
+    plot_composite_mag_data(data, metadata)
+    print()
+    plot_component_mag_data(data, metadata)
 
 
 if __name__ == "__main__":
