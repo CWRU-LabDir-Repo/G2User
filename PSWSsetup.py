@@ -36,11 +36,12 @@
 03-18-24  Ver 2.25 Changed data read sequence change for version number retrieval by PICO
 04-01-24  Ver 2.26 Added A/D sample rate to Header files
 04-04-24  Ver 2.27 Fixed indent problem on Latitude in header files, also fixed MAGTMP units of uT (not nT) for MAGTMP header file
+05-27-24  Ver 2.28 Added Sdrf directory to G2DATA structure
 @author JCGibbons N8OBJ
 """
 
 # Define Software version of this code (so you don't have to search for it in the code!)
-SWVersion = '2.27'
+SWVersion = '2.28'
 
 # Indicate A/D sampple rate in headers
 SampleRate = '8000'
@@ -83,7 +84,8 @@ DataDirR2 = homepath + "/G2DATA/SdataR2/"
 DataDirR3 = homepath + "/G2DATA/SdataR3/"
 MagTmpDir = homepath + "/G2DATA/Smagtmp/"
 PlotDir = homepath + "/G2DATA/Splot/"
-LogDir = homepath + "/G2DATA/Slogs/"
+LogsDir = homepath + "/G2DATA/Slogs/"
+DrfDir = homepath + "/G2DATA/Sdrf/"
 
 ################################################################
 ################################################################
@@ -242,13 +244,22 @@ else:
     os.chmod(MagTmpDir, mode=0o764)   # set the permissions to 764
 
 ################################################################
-# make sure logs path exists - if not, create it with correct permissions
-if (path.exists(LogDir)):
-    print('Slogs exists ' + LogDir)
+# make sure Slogs path exists - if not, create it with correct permissions
+if (path.exists(LogsDir)):
+    print('Slogs exists ' + LogsDir)
 else:
-    print('Not there - making path ' + LogDir)
-    os.mkdir(LogDir)           # create the directory
-    os.chmod(LogDir, mode=0o764)   # set the permissions to 764
+    print('Not there - making path ' + LogsDir)
+    os.mkdir(LogsDir)           # create the directory
+    os.chmod(LogsDir, mode=0o764)   # set the permissions to 764
+
+################################################################
+# make sure Sdrf path exists - if not, create it with correct permissions
+if (path.exists(DrfDir)):
+    print('Sdrf exists ' + DrfDir)
+else:
+    print('Not there - making path ' + DrfDir)
+    os.mkdir(DrfDir)           # create the directory
+    os.chmod(DrfDir, mode=0o764)   # set the permissions to 764
 
 ################################################################
 ################################################################
