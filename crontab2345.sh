@@ -15,13 +15,13 @@ echo crontab 23:45 job - Hello!
 # Get some info before we change G2DATA to a link.
 echo G2DATA file info:
 file /home/pi/G2DATA
-echo Disk usage:
-df
-echo autostart:
+echo Disk usage
+/usr/bin/df
+echo autostart
 cat /home/pi/G2User/autostart
-echo /G2User contents:
+echo /G2User contents
 ls -al /home/pi/G2User
-echo /etc/fstab:
+echo /etc/fstab
 cat /etc/fstab
 
 crontab -u pi -l > /home/pi/PSWS/Sstat/crontab-pi.stat 2>&1

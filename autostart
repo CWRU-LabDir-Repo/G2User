@@ -2,4 +2,4 @@
 @lxpanel --profile LXDE-pi
 @pcmanfm --desktop --profile LXDE-pi
 @xscreensaver -no-splash
-@lxterminal -t G2console --geometry=59x39 -e python3 /home/pi/G2User/G2console.py -r
+@lxterminal -t G2console --geometry=59x39 -e /bin/bash /home/pi/G2User/g2cstart.sh
