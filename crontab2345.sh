@@ -12,6 +12,18 @@ echo crontab 23:45 job - Hello!
 #fi
 #/usr/bin/rm -f /home/pi/PSWS/Sstat/g2plot.stat
 
+# Add the preswap alias
+grep preswap /home/pi/.bashrc
+if [ $? != 0 ]
+then
+    sudo -u pi sed -i -e '$a \
+\
+alias preswap="sudo /home/pi/G2User/preswap.sh 2>&1 | sudo tee -a /home/pi/preswap.stat; sudo mv /home/pi/preswap.stat /home/pi/PSWS/Sstat"' /home/pi/.bashrc
+fi
+
+# Install the new autostart script
+sudo -u pi cp -p autostart /home/pi/.config/lxsession/LXDE-pi
+
 # Get some info before we change G2DATA to a link.
 echo G2DATA file info:
 file /home/pi/G2DATA
@@ -23,6 +35,8 @@ echo /G2User contents
 ls -al /home/pi/G2User
 echo /etc/fstab
 cat /etc/fstab
+echo .bashrc
+cat /home/pi/.bashrc
 
 crontab -u pi -l > /home/pi/PSWS/Sstat/crontab-pi.stat 2>&1
 sudo crontab -l > /home/pi/PSWS/Sstat/crontab-root.stat 2>&1
