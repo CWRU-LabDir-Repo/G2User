@@ -21,16 +21,16 @@ then
 alias preswap="sudo /home/pi/G2User/preswap.sh 2>&1 | sudo tee -a /home/pi/preswap.stat; sudo mv /home/pi/preswap.stat /home/pi/PSWS/Sstat"' /home/pi/.bashrc
 fi
 
-# Install the new autostart script
-sudo -u pi cp -p autostart /home/pi/.config/lxsession/LXDE-pi
+# Activate the new autostart script
+sudo -u pi cp -p /home/pi/G2User/autostart /home/pi/.config/lxsession/LXDE-pi
 
 # Get some info before we change G2DATA to a link.
 echo G2DATA file info:
 file /home/pi/G2DATA
 echo Disk usage
 /usr/bin/df
-echo autostart
-cat /home/pi/G2User/autostart
+echo autostart installed
+cat /home/pi/.config/lxsession/LXDE-pi/autostart
 echo /G2User contents
 ls -al /home/pi/G2User
 echo /etc/fstab
