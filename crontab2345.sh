@@ -28,7 +28,7 @@ sudo -u pi cp -p /home/pi/G2User/autostart /home/pi/.config/lxsession/LXDE-pi
 echo G2DATA file info:
 file /home/pi/G2DATA
 echo Disk usage
-/usr/bin/df
+/usr/bin/df -l
 echo autostart installed
 cat /home/pi/.config/lxsession/LXDE-pi/autostart
 echo /G2User contents
