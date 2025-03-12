@@ -23,7 +23,6 @@
 # Configuration
 PGM=$(basename -- "$0")
 G2DATA=/home/pi/G2DATA
-G2DATASAVE=${G2DATA}.1
 DEVICE=/dev/sda1
 FSTAB=/etc/fstab
 DATE=`date`
@@ -50,8 +49,9 @@ errexit ()
 echo $PGM: Prepare the Grape2 system for swapping the external hard-disk drive
 echo $DATE
 echo ""
-echo This program should be run before the Grape2 external HDD is swapped out.
-read -p "Enter Y to continue (default) or n to exit (Y/n): " ans
+echo This program should be run as Step 1 of the Grape 2 Drive HDD Swap Procedure.
+echo ""
+read -p "Enter y to continue (default) or n to exit (Y/n): " ans
 case "$ans" in
 n|N)
     echo $PGM exiting
@@ -122,28 +122,13 @@ then
     sleep 1
 fi
 
-# Verify that the G2DATA directory contains no data
-# If the directory is a broken symbolic link, it has no "total" so handle that case first.
-file $G2DATA | grep "broken symbolic link"
-if [ $? == 0 ]
+# Remove the G2DATA directory
+echo Removing $G2DATA directory
+rm -f $G2DATA/nd
+rm -dv $G2DATA
+if [ $? != 0 ]
 then
-    BLKS=0
-else
-    BLKS=`ls -s $G2DATA | grep total | awk '{ print $2 }'`
-fi
-echo $G2DATA blocks $BLKS
-if [ $BLKS -ge 40 ]
-then
-    errexit "Directory $G2DATA appears to contain data"
-else
-# Now move the directory to a safe place.
-    echo Directory $G2DATA appears to be empty
-    echo It will be moved to $G2DATASAVE for safety
-    mv -f $G2DATA $G2DATASAVE
-    if [ $? != 0 ]
-    then
-        errexit "Moving $G2DATA to $G2DATASAVE failed"
-    fi
+    errexit "Removing $G2DATA failed"
 fi
 
 # Disable the G2DATA filesystem mount in /etc/fstab; comment it out
@@ -175,7 +160,8 @@ fi
 # Success. Print messages.
 echo ""
 echo $PGM completed successfully.
-echo Please shut down the system now, then power it down and continue the hard-disk swap procedure.
+echo ""
+echo Please continue with Step 2 of the Grape 2 Drive HDD Swap Procedure.
 echo ""
 
 exit 0
