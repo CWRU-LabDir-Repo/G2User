@@ -90,7 +90,7 @@ do
 done
 
 echo Compressing files...
-/home/pi/G2User/compfiles.sh > /home/pi/PSWS/Sstat/compfiles.stat 2>&1
+/home/pi/G2User/compfiles.sh today > /home/pi/PSWS/Sstat/compfiles.stat 2>&1
 sleep 1
 
 echo Transferring files to repository...

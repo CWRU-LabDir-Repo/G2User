@@ -4,7 +4,13 @@ date
 echo 'Grape 2 compress files shell script'
 cd /home/pi/G2DATA/Sxfer
 
-DATE=`date +%Y-%m-%d --date="1 day ago"`
+if [[ "$1" == "" ]]
+then
+    DDIFF="1 day ago"
+else
+    DDIFF="$1"
+fi
+DATE=`date +%Y-%m-%d --date="$DDIFF"`
 NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
 PATTERN=${DATE}T000000Z_${NODE}
 
