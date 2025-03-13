@@ -18,7 +18,7 @@ PATTERN=${DATE}T000000Z_${NODE}
 /usr/bin/gzip /home/pi/G2DATA/Slogs/${PATTERN}_DC.log
 
 # zip all daily csv files for transfer
-time /usr/bin/zip -m ${PATTERN} ${PATTERN}*.csv ${PATTERN}*.preswap
+time /usr/bin/zip -m ${PATTERN} ${PATTERN}*.csv
 
 # zip all daily log files for transfer
 # compfiles.stat will be truncated because we are currently redirecting to it.

@@ -62,6 +62,9 @@ y|Y|*)
     ;;
 esac
 
+# Work from home directory
+cd /home/pi
+
 # Block program running more than once
 if [ -f $NOSWAP ]
 then
@@ -76,7 +79,6 @@ sleep 1
 
 # Run the data upload scripts.
 # Copy current day's files to Sxfer directory using inline commands because files2xfer.py won't work for current files.
-# Also give files a special extension to differentiate them from the same day's new files to be uploaded after the HDD swap.
 echo "Copying today's data files to transfer directory..."
 for DIR in $FILEDIRS
 do
@@ -84,7 +86,7 @@ do
     if [ $? == 0 ]
     then
         FILENAME=$(basename -- "$FILEPATH")
-        cp -p ${FILEPATH} ${G2DATA}/Sxfer/${FILENAME}.preswap
+        cp -p ${FILEPATH} ${G2DATA}/Sxfer
         echo Copied ${FILEPATH}
     fi
 done
@@ -92,6 +94,19 @@ done
 echo Compressing files...
 /home/pi/G2User/compfiles.sh today > /home/pi/PSWS/Sstat/compfiles.stat 2>&1
 sleep 1
+
+# Give xfer files a special name to differentiate them from the same day's files to be transferred after the HDD swap.
+echo Renaming files...
+cd ${G2DATA}/Sxfer
+for FILE in `ls *`
+do
+# Extract the basename without path and .zip extension
+    FILE_NP=${FILE##*/}
+    FILE_NX=${FILE_NP%.zip}
+    echo Moving ${FILE} to ${FILE_NX}.preswap.zip
+    mv ${FILE} ${FILE_NX}.preswap.zip
+done
+cd /home/pi
 
 echo Transferring files to repository...
 /home/pi/G2User/xfer2repo.sh > /home/pi/PSWS/Sstat/xfer2repo.stat 2>&1
