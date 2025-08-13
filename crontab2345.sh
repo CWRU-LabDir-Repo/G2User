@@ -26,7 +26,7 @@ echo NODE=$NODE
 #echo G2DATA file info:
 #file /home/pi/G2DATA
 #echo Disk usage
-#/usr/bin/df -l
+/usr/bin/df -lh
 #echo autostart installed
 #cat /home/pi/.config/lxsession/LXDE-pi/autostart
 #echo /G2User contents
