@@ -2,8 +2,25 @@
 # 23:45 crontab job for root 
 date
 echo crontab 23:45 job - Hello!
+echo
+
 NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
-echo NODE=$NODE
+echo This is Grape2 NODE $NODE
+echo
+
+echo Checking OS release:
+cat /etc/os-release
+echo
+
+echo Checking /etc/apt/sources.list:
+cat /etc/apt/sources.list
+echo
+
+echo Checking lftp installed:
+#which lftp
+which lftp
+echo
+
 #if [ $NODE == "N0001002" ]
 #then
 #echo "Running git-crontab-fix.sh for node ${NODE}"
@@ -25,22 +42,33 @@ echo NODE=$NODE
 # Get some info before we change G2DATA to a link.
 #echo G2DATA file info:
 #file /home/pi/G2DATA
-#echo Disk usage
+
+echo Checking disk usage:
 /usr/bin/df -lh
+echo
+
 #echo autostart installed
 #cat /home/pi/.config/lxsession/LXDE-pi/autostart
 #echo /G2User contents
 #ls -al /home/pi/G2User
 #echo /etc/fstab
 #cat /etc/fstab
-echo G2DATA entry in /etc/fstab:
+
+echo Checking G2DATA entry in /etc/fstab:
 grep G2DATA /etc/fstab
+echo
+
 #echo .bashrc
 #cat /home/pi/.bashrc
-echo External drives:
+echo Checking external drives:
 /usr/bin/df | grep "/dev/sd"
+echo
 
+echo Logging pi user crontab
 crontab -u pi -l > /home/pi/PSWS/Sstat/crontab-pi.stat 2>&1
+echo Logging root user crontab
 sudo crontab -l > /home/pi/PSWS/Sstat/crontab-root.stat 2>&1
+echo
+
 #cp /boot/cmdline.txt /home/pi/PSWS/Sstat/boot-cmdline-txt.stat
 echo crontab 23:45 job done
