@@ -17,8 +17,15 @@ cat /etc/apt/sources.list
 echo
 
 echo Checking lftp installed:
-#which lftp
-which lftp
+CMD=lftp
+which $CMD
+if [ $? == 0 ]
+then
+    echo $CMD found, not installing
+else
+    echo $CMD not found, installing
+    sudo apt install $CMD
+fi
 echo
 
 #if [ $NODE == "N0001002" ]
