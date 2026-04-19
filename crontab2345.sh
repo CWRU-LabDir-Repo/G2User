@@ -57,8 +57,9 @@ echo Replacing autostart script
 sudo -u pi cp -p -v /home/pi/G2User/autostart /home/pi/.config/lxsession/LXDE-pi
 echo
 
-#echo autostart installed
-#cat /home/pi/.config/lxsession/LXDE-pi/autostart
+echo autostart installed:
+cat /home/pi/.config/lxsession/LXDE-pi/autostart
+echo
 
 echo G2DATA file info:
 file /home/pi/G2DATA
@@ -66,6 +67,10 @@ echo
 
 echo Contents of /home/pi/G2User:
 ls -al /home/pi/G2User
+echo
+
+echo Contents of /home/pi/G2User/ondeck:
+ls -al /home/pi/G2User/ondeck
 echo
 
 echo Contents of /etc/fstab:

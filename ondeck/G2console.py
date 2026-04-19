@@ -7,13 +7,14 @@ import psutil
 import curses
 import threading
 import subprocess
+import sys
 from datetime import datetime
 from collections import deque
 from serial import Serial
 from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
-version = "12.12"
+version = "12.13"
 
 # Constants for modes
 MODE_DAILY = 0
@@ -477,6 +478,28 @@ def print_mag(stdscr, row):
         saddstr(stdscr, row + 5, 0, "MIN 1 hr ")
 
 
+def stop_datactrlr(dc):
+    dc.stdin.write(b"\x1b")
+    dc.stdin.flush()
+    time.sleep(0.1)
+    dc.stdin.write(b"q\n")
+    dc.stdin.flush()
+    time.sleep(0.1)
+
+def check_restart(stdscr, position):
+    if os.path.exists(restart_path):
+        saddstr(
+            stdscr,
+            position,
+            6,
+            "Restarting the Console for updates...              ",
+        )
+        stdscr.refresh()
+        os.remove(restart_path)
+        return True
+
+    return False
+
 def update_ui(stdscr):
     global mode, exited
     # TODO: do NOT terminate statmon on pipe close
@@ -493,6 +516,7 @@ def update_ui(stdscr):
         stdscr, end_of_mag + 2, 6, "<ctrl-p> = toggle for 1Hr/24Hr Min/Max            "
     )
 
+    exit_code = 0
     program_name = "datactrlr"
     while not is_process_running(program_name):
         saddstr(
@@ -523,6 +547,10 @@ def update_ui(stdscr):
             datactrlr.stdin.write(b"r\n")
             datactrlr.stdin.flush()
             time.sleep(0.1)
+        elif check_restart(stdscr, end_of_mag + 1):
+            exited = True
+            exit_code = 6
+            return exit_code
 
     if not "datactrlr" in locals():
         saddstr(
@@ -558,7 +586,7 @@ def update_ui(stdscr):
                 stdscr.refresh()
 
                 char = stdscr.getch()
-                if char != curses.ERR and char == 24:
+                if char != curses.ERR and char == 24:  # Detected Ctrl-x
                     if "datactrlr" in locals():
                         saddstr(
                             stdscr,
@@ -567,12 +595,7 @@ def update_ui(stdscr):
                             "Stopping the Data Controller...                    ",
                         )
                         stdscr.refresh()
-                        datactrlr.stdin.write(b"\x1b")
-                        datactrlr.stdin.flush()
-                        time.sleep(0.1)
-                        datactrlr.stdin.write(b"q\n")
-                        datactrlr.stdin.flush()
-                        time.sleep(0.1)
+                        stop_datactrlr(datactrlr)
                     else:
                         saddstr(
                             stdscr,
@@ -584,6 +607,10 @@ def update_ui(stdscr):
                         break
                 if char != curses.ERR and char == 16:  # Detected Ctrl+p
                     mode = MODE_DAILY if mode == MODE_HOURLY else MODE_HOURLY
+                if check_restart(stdscr, end_of_mag + 1):
+                    stop_datactrlr(datactrlr)
+                    exit_code = 5
+                    break
                 stdscr.refresh()
     except KeyboardInterrupt:
         saddstr(
@@ -597,6 +624,7 @@ def update_ui(stdscr):
         exited = True
     data_reader_thread.join()
     gps_reader_thread.join()
+    return exit_code
 
 
 def main(stdscr):
@@ -607,8 +635,11 @@ def main(stdscr):
         1, curses.COLOR_GREEN, curses.COLOR_BLACK
     )  # (color pair #, foreground, background)
     stdscr.attron(curses.color_pair(1))  # Set default color pair
-    update_ui(stdscr)
-
+    exit_code = update_ui(stdscr)
+    log.write("Exit code is " + str(exit_code) + "\n")
+    log.flush()
+    log.close()
+    sys.exit(exit_code)
 
 if __name__ == "__main__":
     # Create the argument parser
@@ -628,6 +659,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     pipe_path = "/home/pi/PSWS/Sstat/datamon.fifo"
+    restart_path = "/home/pi/PSWS/Scmd/restartcon"
     log_path = "/home/pi/G2DATA/Slogs/"
     log_file = "console.log"
     if not os.path.exists(log_path):
@@ -636,4 +668,3 @@ if __name__ == "__main__":
 
     curses.wrapper(main)
 
-    log.close()
