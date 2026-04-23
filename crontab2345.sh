@@ -98,4 +98,16 @@ cp /boot/cmdline.txt /home/pi/PSWS/Sstat/boot-cmdline-txt.stat
 
 echo
 
+if [ $NODE == "N0001002" ]
+then
+    grep "Already up to date" /home/pi/PSWS/Sstat/githubpull.stat
+    UCODE=$?
+    if [ $UCODE != 0 ]
+    then
+        RFLAG=/home/pi/PSWS/Scmd/restartcon
+        echo "Setting flag to update executables and restart G2console"
+        touch $RFLAG
+    fi
+fi
+
 echo crontab 23:45 job done
