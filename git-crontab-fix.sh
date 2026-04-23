@@ -1,6 +1,6 @@
 #!/bin/bash
 # git-crontab-fix.sh
-# Replace the pi user's crontab git pull commands with git fetch/reset/merge commands.
+# Replace the pi user's crontab git pull or git fetch/reset/merge commands with githubpull.sh
 
 # read pi crontab into a file
 crontab -u pi -l > crontab-pi
@@ -13,21 +13,25 @@ then
     # Search for entry in the crontab so we replace it only once
     echo "Tag found, searching for entry"
     grep -q "git fetch" crontab-pi
-    if [ $? == 0 ]
+    fetch_code=$?
+    grep -q "git pull" crontab-pi
+    pull_code=$?
+    if [[ $fetch_code == 0 || $pull_code == 0 ]]
     then
-        echo "Entry already replaced, no action taken"
-    else
         echo "Now changing entry"
         # Delete 2 lines
         sed '/# 23:30/,/30 23 * * */d' crontab-pi > crontab-pi-fixed
         # Add 2 lines
         sed -i -e '$a \
 # 23:30 do daily git pull from /G2User/ repo to update local system\
-30 23 * * * cd /home/pi/G2User/; git fetch; git reset --hard HEAD; git merge "@{u}" > /home/pi/PSWS/Sstat/githubpull.stat 2>&1' crontab-pi-fixed
+30 23 * * * /home/pi/G2User/githubpull.sh > /home/pi/PSWS/Sstat/githubpull.stat 2>&1' crontab-pi-fixed
         # Replace crontab with the fixed file
         echo "Now replacing crontab"
         crontab -u pi crontab-pi-fixed
         rm -f crontab-pi-fixed
+        echo "Pi user crontab entry will now call githubpull.sh"
+    else
+        echo "Pi user crontab git command already replaced, no action taken"
     fi
 else
     echo "Tag not found"

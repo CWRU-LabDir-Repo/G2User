@@ -29,11 +29,11 @@ else
 fi
 echo
 
-#if [ $NODE == "N0001002" ]
-#then
-#echo "Running git-crontab-fix.sh for node ${NODE}"
-#/home/pi/G2User/git-crontab-fix.sh
-#fi
+if [ $NODE == "N0001002" ]
+then
+    echo "Running git-crontab-fix.sh for node ${NODE}"
+    /home/pi/G2User/git-crontab-fix.sh
+fi
 
 echo Checking the preswap alias:
 grep preswap /home/pi/.bashrc
