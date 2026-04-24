@@ -70,8 +70,8 @@ do
     then
         # Apply updates and restart the console.
         echo "`date +%Y-%m-%dT%H:%M:%S` $G2C stopped for updates"
-        echo "Applying Grape 2 updates..."
-        # wait for executables to stop
+        echo "Applying Grape 2 updates"
+        echo "Waiting for executables to stop..."
         sleep 4
         for FILE in `ls $G2User/ondeck`
         do
@@ -95,7 +95,7 @@ do
             G2CARG=''           # Console will restart in Standby mode
         fi
         echo "Restarting $G2C..."
-        sleep 4
+        sleep 2
         echo
     else
         # All other exit codes terminate the while loop
