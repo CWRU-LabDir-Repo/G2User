@@ -29,12 +29,13 @@ else
 fi
 echo
 
-#if [ $NODE == "N0001002" ]
-#then
-    echo "Running git-crontab-fix.sh for node ${NODE}"
-    /home/pi/G2User/git-crontab-fix.sh
-    echo
-#fi
+echo "Checking crontab fix for node ${NODE}:"
+/home/pi/G2User/git-crontab-fix.sh
+echo
+
+echo "Checking debug level for node ${NODE}:"
+/home/pi/G2User/check-debug-level.sh
+echo
 
 echo Checking the preswap alias:
 grep preswap /home/pi/.bashrc
@@ -99,20 +100,17 @@ cp /boot/cmdline.txt /home/pi/PSWS/Sstat/boot-cmdline-txt.stat
 echo
 
 echo Checking for restart:
-#if [ $NODE == "N0001002" ]
-#then
-    grep "Already up to date" /home/pi/PSWS/Sstat/githubpull.stat
-    UCODE=$?
-    if [ $UCODE != 0 ]
-    then
-        RFLAG=/home/pi/PSWS/Scmd/restartcon
-        echo "Setting flag to update executables and restart G2console"
-        touch $RFLAG
-        echo
-    else
-        echo "Already up to date, no restart required"
-    fi
+grep -q "Already up to date" /home/pi/PSWS/Sstat/githubpull.stat
+UCODE=$?
+if [ $UCODE != 0 ]
+then
+    RFLAG=/home/pi/PSWS/Scmd/restartcon
+    echo "Setting flag to update executables and restart G2console"
+    touch $RFLAG
     echo
-#fi
+else
+    echo "Already up to date, no restart required"
+fi
+echo
 
 echo crontab 23:45 job done

@@ -14,9 +14,9 @@ then
     echo "Tag found, searching for entry"
     grep -q "git fetch" crontab-pi
     fetch_code=$?
-    grep -q "git pull" crontab-pi
-    pull_code=$?
-    if [[ $fetch_code == 0 || $pull_code == 0 ]]
+    grep -q "git reset" crontab-pi
+    reset_code=$?
+    if [[ $fetch_code == 0 || $reset_code == 0 ]]
     then
         echo "Now changing entry"
         # Delete 2 lines

@@ -6,7 +6,7 @@ git fetch
 git reset --hard HEAD
 git merge '@{u}'
 
-# restore file modification times
+echo "Restore file modification times:"
 git restore-mtime
 code=$?
 if [ $code != 0 ]
