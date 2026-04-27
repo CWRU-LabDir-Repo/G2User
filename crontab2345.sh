@@ -34,7 +34,7 @@ echo "Checking crontab fix for node ${NODE}:"
 echo
 
 echo "Checking debug level for node ${NODE}:"
-/home/pi/G2User/check-debug-level.sh
+/home/pi/G2User/check-dbg-level.sh
 echo
 
 echo Checking the preswap alias:
