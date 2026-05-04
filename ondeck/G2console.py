@@ -6,15 +6,18 @@ import time
 import psutil
 import curses
 import threading
-import subprocess
 import sys
+import atexit
+import subprocess
+from subprocess import PIPE, DEVNULL
 from datetime import datetime
 from collections import deque
 from serial import Serial
 from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
-version = "12.13"
+console_name = "Grape2 Console"
+version = "12.14"
 
 # Constants for modes
 MODE_DAILY = 0
@@ -105,6 +108,7 @@ gps_data = {
 }
 exited = False
 mode = MODE_DAILY
+datactrlr = None
 
 
 def saddstr(stdscr, y, x, string):
@@ -262,16 +266,14 @@ def parse_json(line):
             current_axis_val = float(data[axis])
             mag[i].update_bounds(current_axis_val, data["ts"])
         return data
-    except json.JSONDecodeError as e:
+    except Exception as ex:
         if len(line) > 10:
-            log.write("BEGIN jsonparser exception\n")
-            log.write(repr(line))
+            log.write("Exception in parse_jason: " + str(ex) + "\n")
+            log.write(repr(line) + "\n\n")
             regex_pattern = r"(-?nan|-?inf|null)"
             replacement = "0.0"
 
             line = re.sub(regex_pattern, replacement, line)
-            log.write(repr(line))
-            log.write("END jsonparser exception\n")
             log.flush()
             return json.loads(
                 line,
@@ -284,7 +286,7 @@ def parse_json(line):
 
 
 def print_title(stdscr):
-    saddstr(stdscr, 0, 22, f"Grape2 Console {version}")
+    saddstr(stdscr, 0, 22, f"{console_name} {version}")
     saddstr(stdscr, 1, 24, "Node: ")
     with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
         saddstr(stdscr, 1, 30, file.readline().strip())
@@ -477,14 +479,23 @@ def print_mag(stdscr, row):
         saddstr(stdscr, row + 3, 0, "MAX 1 hr ")
         saddstr(stdscr, row + 5, 0, "MIN 1 hr ")
 
+def print_status(stdscr, row, data):
+    stat = str(data["status"]).strip("[]")
+    if stat != "":
+        saddstr(stdscr, row, 6, stat)
+    else:
+        saddstr(stdscr, row, 6, "                                                        ")
 
-def stop_datactrlr(dc):
-    dc.stdin.write(b"\x1b")
-    dc.stdin.flush()
-    time.sleep(0.1)
-    dc.stdin.write(b"q\n")
-    dc.stdin.flush()
-    time.sleep(0.1)
+def stop_datactrlr():
+    global datactrlr
+    if datactrlr is not None:
+        datactrlr.stdin.write(b"\x1b")
+        datactrlr.stdin.flush()
+        time.sleep(0.1)
+        datactrlr.stdin.write(b"q\n")
+        datactrlr.stdin.flush()
+        time.sleep(0.1)
+        datactrlr = None
 
 def check_restart(stdscr, position):
     if os.path.exists(restart_path):
@@ -501,7 +512,7 @@ def check_restart(stdscr, position):
     return False
 
 def update_ui(stdscr):
-    global mode, exited
+    global mode, exited, datactrlr
     # TODO: do NOT terminate statmon on pipe close
     end_of_title = print_title(stdscr)
     end_of_version = print_version_widget(stdscr, end_of_title)
@@ -518,55 +529,54 @@ def update_ui(stdscr):
 
     exit_code = 0
     program_name = "datactrlr"
-    while not is_process_running(program_name):
-        saddstr(
-            stdscr,
-            end_of_mag + 1,
-            6,
-            "<r> = start Data Controller                        ",
-        )
-        stdscr.refresh()
-
-        char = stdscr.getch()
-        if (char != curses.ERR and char == 114) or (args.autorun):  # statmon detected r
+    while datactrlr is None:
+        if is_process_running(program_name):
+            log.write(f"Terminating running {program_name}\n")
+            log.flush()
+            kproc = subprocess.Popen( ["sudo", "killall", program_name], stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL)
+            time.sleep(2.0)
+        else:
             saddstr(
                 stdscr,
                 end_of_mag + 1,
                 6,
-                "Starting the Data Controller...                ",
+                "<r> = start Data Controller                        ",
             )
             stdscr.refresh()
 
-            datactrlr = subprocess.Popen(
-                ["sudo", "/home/pi/G2User/datactrlr", "-l"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            char = stdscr.getch()
+            if (char != curses.ERR and char == 114) or (args.autorun):  # statmon detected r
+                saddstr(
+                    stdscr,
+                    end_of_mag + 1,
+                    6,
+                    "Starting the Data Controller...                ",
+                )
+                stdscr.refresh()
 
-            datactrlr.stdin.write(b"r\n")
-            datactrlr.stdin.flush()
-            time.sleep(0.1)
-        elif check_restart(stdscr, end_of_mag + 1):
-            exited = True
-            exit_code = 6
-            return exit_code
+                log.write(f"Starting {program_name}\n")
+                log.flush()
+                datactrlr = subprocess.Popen(
+                    ["sudo", "/home/pi/G2User/datactrlr", "-l"],
+                    stdin=PIPE,
+                    stdout=DEVNULL,
+                    stderr=DEVNULL,
+                )
 
-    if not "datactrlr" in locals():
-        saddstr(
-            stdscr,
-            end_of_mag + 1,
-            6,
-            "Data Controller is running in another terminal",
-        )
-        stdscr.refresh()
-    else:
-        saddstr(
-            stdscr,
-            end_of_mag + 1,
-            6,
-            "<ctrl-x> = terminate Data Controller              ",
-        )
+                datactrlr.stdin.write(b"r\n")
+                datactrlr.stdin.flush()
+                time.sleep(0.1)
+            elif check_restart(stdscr, end_of_mag + 1):
+                exited = True
+                exit_code = 6
+                return exit_code
+
+    saddstr(
+        stdscr,
+        end_of_mag + 1,
+        6,
+        "<ctrl-x> = terminate Data Controller              ",
+    )
 
     data_reader_thread = threading.Thread(target=data_reader)
     data_reader_thread.start()
@@ -583,11 +593,12 @@ def update_ui(stdscr):
                 print_freq(stdscr, end_of_ampl)
                 print_temp(stdscr, end_of_freq, last_data)
                 print_mag(stdscr, end_of_temp)
+                #print_status(stdscr, end_of_mag + 3, last_data)
                 stdscr.refresh()
 
                 char = stdscr.getch()
                 if char != curses.ERR and char == 24:  # Detected Ctrl-x
-                    if "datactrlr" in locals():
+                    if datactrlr is not None:
                         saddstr(
                             stdscr,
                             end_of_mag + 1,
@@ -595,7 +606,7 @@ def update_ui(stdscr):
                             "Stopping the Data Controller...                    ",
                         )
                         stdscr.refresh()
-                        stop_datactrlr(datactrlr)
+                        stop_datactrlr()
                     else:
                         saddstr(
                             stdscr,
@@ -608,7 +619,7 @@ def update_ui(stdscr):
                 if char != curses.ERR and char == 16:  # Detected Ctrl+p
                     mode = MODE_DAILY if mode == MODE_HOURLY else MODE_HOURLY
                 if check_restart(stdscr, end_of_mag + 1):
-                    stop_datactrlr(datactrlr)
+                    stop_datactrlr()
                     exit_code = 5
                     break
                 stdscr.refresh()
@@ -629,6 +640,11 @@ def update_ui(stdscr):
 
 def main(stdscr):
 
+    atexit.register(stop_datactrlr)
+
+    log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + f"{console_name} v{version} started\n")
+    log.flush()
+
     curses.curs_set(0)  # hide cursor
     curses.halfdelay(5)
     curses.init_pair(
@@ -637,6 +653,7 @@ def main(stdscr):
     stdscr.attron(curses.color_pair(1))  # Set default color pair
     exit_code = update_ui(stdscr)
     log.write("Exit code is " + str(exit_code) + "\n")
+    log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + f"{console_name} v{version} ended\n")
     log.flush()
     log.close()
     sys.exit(exit_code)

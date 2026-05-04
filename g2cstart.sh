@@ -64,7 +64,7 @@ STARTCON=true
 while $STARTCON
 do
     echo "`date +%Y-%m-%dT%H:%M:%S` $G2C starting"
-    /usr/bin/python3 /home/pi/G2User/G2console.py $G2CARG
+    /usr/bin/python3 $G2User/G2console.py $G2CARG
     code=$?
     if [[ $code == 5 || $code == 6 ]]
     then
@@ -95,7 +95,9 @@ do
             G2CARG=''           # Console will restart in Standby mode
         fi
         echo "Restarting $G2C..."
-        sleep 2
+        # Retrieve current software version numbers into a file
+        # This takes 2.5 seconds which gives the user time to see the above message
+        /usr/bin/python3 $G2User/getvers.py > /home/pi/PSWS/Sstat/versions.stat 2>&1
         echo
     else
         # All other exit codes terminate the while loop
