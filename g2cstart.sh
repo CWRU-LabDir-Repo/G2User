@@ -95,9 +95,7 @@ do
             G2CARG=''           # Console will restart in Standby mode
         fi
         echo "Restarting $G2C..."
-        # Retrieve current software version numbers into a file
-        # This takes 2.5 seconds which gives the user time to see the above message
-        /usr/bin/python3 $G2User/getvers.py > /home/pi/PSWS/Sstat/versions.stat 2>&1
+        sleep 2
         echo
     else
         # All other exit codes terminate the while loop
