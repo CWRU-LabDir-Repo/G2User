@@ -17,7 +17,7 @@ from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
 console_name = "Grape2 Console"
-version = "12.14"
+version = "12.15"
 
 # Constants for modes
 MODE_DAILY = 0
@@ -109,7 +109,6 @@ gps_data = {
 exited = False
 mode = MODE_DAILY
 datactrlr = None
-
 
 def saddstr(stdscr, y, x, string):
     max_y, max_x = stdscr.getmaxyx()
@@ -268,7 +267,7 @@ def parse_json(line):
         return data
     except Exception as ex:
         if len(line) > 10:
-            log.write("Exception in parse_jason: " + str(ex) + "\n")
+            log.write("Exception in parse_json: " + str(ex) + "\n")
             log.write(repr(line) + "\n\n")
             regex_pattern = r"(-?nan|-?inf|null)"
             replacement = "0.0"
@@ -309,6 +308,20 @@ def print_version(stdscr, row, data):
         elements = ver_string.split(".")
         elements[-1] = elements[-1].rjust(2, "0")
         saddstr(stdscr, row + 1 + i, 32, ".".join(elements))
+
+
+def log_versions(data):
+    versions = [("datactrlr", "rver"), ("picorun", "pver"), ("magdata", "mver")]
+    ver_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " Versions: G2console " + f"{version} "
+    for i, (label, key) in enumerate(versions):
+        ver_string += label + " " + data[key] + " "
+    try:
+        verlog = open("/home/pi/PSWS/Sstat/versions.stat", "w")
+        verlog.write(ver_string + "\n")
+        verlog.close
+    except Exception as ex:
+        log.write("Exception in log_versions: " + str(ex) + "\n")
+        log.flush()
 
 
 def print_datetime_widget(stdscr, row):
@@ -513,6 +526,7 @@ def check_restart(stdscr, position):
 
 def update_ui(stdscr):
     global mode, exited, datactrlr
+    log_vers = True
     # TODO: do NOT terminate statmon on pipe close
     end_of_title = print_title(stdscr)
     end_of_version = print_version_widget(stdscr, end_of_title)
@@ -585,6 +599,9 @@ def update_ui(stdscr):
     try:
         while data_reader_thread.is_alive():
             if last_data != "":
+                if log_vers is True:
+                    log_versions(last_data)
+                    log_vers = False
                 print_version(stdscr, end_of_title, last_data)
                 print_gps_time(stdscr, end_of_version)
                 print_gps(stdscr, end_of_datetime)
