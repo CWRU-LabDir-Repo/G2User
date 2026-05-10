@@ -107,6 +107,7 @@ then
     RFLAG=/home/pi/PSWS/Scmd/restartcon
     echo "Setting flag to update executables and restart G2console"
     touch $RFLAG
+    python3 /home/pi/G2User/patch_headers.py > /home/pi/PSWS/Sstat/patch_headers.stat 2>&1 &
     echo
 else
     echo "Already up to date, no restart required"

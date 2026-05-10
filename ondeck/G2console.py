@@ -17,7 +17,7 @@ from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
 console_name = "Grape2 Console"
-version = "12.15"
+version = "12.16"
 
 # Constants for modes
 MODE_DAILY = 0
@@ -314,7 +314,10 @@ def log_versions(data):
     versions = [("datactrlr", "rver"), ("picorun", "pver"), ("magdata", "mver")]
     ver_string = datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " Versions: G2console " + f"{version} "
     for i, (label, key) in enumerate(versions):
-        ver_string += label + " " + data[key] + " "
+        ver = data[key]
+        if ver == "":
+            ver = "None"
+        ver_string += label + " " + ver + " "
     try:
         verlog = open("/home/pi/PSWS/Sstat/versions.stat", "w")
         verlog.write(ver_string + "\n")
