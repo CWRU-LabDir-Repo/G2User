@@ -17,10 +17,8 @@ PATTERN=${DATE}T000000Z_${NODE}
 # gzip daily dc log file for long term storage
 /usr/bin/gzip /home/pi/G2DATA/Slogs/${PATTERN}_DC.log
 
-# copy console.log to xfer directory, rename and gzip it
-echo "gziping console.log"
+# copy console.log to xfer directory and rename
 cp -p /home/pi/G2DATA/Slogs/console.log ${PATTERN}_console.log
-/usr/bin/gzip ${PATTERN}_console.log
 
 # zip all daily csv files for transfer
 time /usr/bin/zip -m ${PATTERN} ${PATTERN}*.csv
