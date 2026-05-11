@@ -10,6 +10,7 @@
 import os
 import sys
 import time
+import shutil
 from datetime import datetime
 
 def read_version_file(ver_path):
@@ -17,7 +18,6 @@ def read_version_file(ver_path):
     versions = []
     with open(ver_path, 'r') as vfile:
         vline = vfile.read()
-        print(vline.split())
         vtokens = vline.split()
         for i, vtoken in enumerate(vtokens):
             if vtoken == "G2console":
@@ -40,7 +40,7 @@ def patch_line_version(line, version_label, newver):
         if len(parts) > 1:
             # Take the remaining text, strip leading spaces, and grab the first word
             oldver = parts[1].strip().split()[0]
-            print(f"{version_label} found: {oldver}")
+            print(f"{version_label} previous: {oldver} current: {newver}")
 
             if oldver != newver:
                 return 2, line.replace(oldver, newver)
@@ -76,20 +76,15 @@ def patch_lines(lines, versions):
 
 def patch_file(path_name, file_name, versions):
     try:
-        #with open(path_name, 'r') as file:
         infile = os.path.join(path_name, file_name)
         print(f"Patching file {infile}")
         with open(infile, 'r') as file:
             lines = file.readlines()
             patched = patch_lines(lines, versions)
-
-#            for line in lines:
-#                print(line.strip())
-
             file.close()
 
-            # write the new file
             if patched:
+                # write the new file
                 outfile = os.path.join(path_name, f"tmp{file_name}")
                 print(f"Updating file {infile}")
                 with open(outfile, 'w') as file2:
@@ -97,6 +92,7 @@ def patch_file(path_name, file_name, versions):
                         file2.write(line)
                 file2.close()
                 os.rename(outfile, infile)
+                shutil.chown(infile, user='pi', group='pi')
 
     except Exception as ex:
         print("Exception in patch_file(): " + str(ex))
