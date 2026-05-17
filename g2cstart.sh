@@ -25,7 +25,7 @@ then
     echo "Error: $G2DATA is not a symbolic link:"
     ls -al $G2DATA
 else
-    seconds=5
+    seconds=10
     while [ $seconds -gt 0 ]
     do
         if [ -e "$G2DATA" ]

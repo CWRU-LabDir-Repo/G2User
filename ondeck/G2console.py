@@ -17,18 +17,11 @@ from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
 console_name = "Grape2 Console"
-version = "12.16"
+version = "12.17"
 
 # Constants for modes
 MODE_DAILY = 0
 MODE_HOURLY = 1
-
-
-def is_process_running(process_name):
-    for process in psutil.process_iter(["pid", "name"]):
-        if process.info["name"] == process_name:
-            return True
-    return False
 
 
 class DailyMinMaxCollection:
@@ -90,6 +83,49 @@ class DailyMinMaxCollection:
         return f"HourlyMinMaxCollection={list(self.collection)}"
 
 
+class console_log:
+
+    global node_num
+
+    def __init__(self, log_path, log_file):
+        self.log_path = log_path
+        self.log_file = log_file
+        self.log_full_path = None
+        self.fd = None
+        self.rotate_flag = False
+        self.rotate_time = "00:00:00"
+
+    def open(self):
+        if not os.path.exists(self.log_path):
+            os.makedirs(self.log_path)
+        self.log_full_path = os.path.join(self.log_path, self.log_file)
+        self.fd = open(self.log_full_path, "a")
+
+    def close(self):
+        if self.fd is not None:
+            self.fd.close()
+            self.fd = None
+
+    def write(self, str):
+        self.fd.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S ") + str + "\n")
+        self.fd.flush()
+
+    def flush(self):
+        if self.fd is not None:
+            self.fd.flush()
+
+    def rotate(self):
+        log_rotate_path = os.path.join(
+            self.log_path,
+            datetime.now().strftime("%Y-%m-%dT000000Z_") + f"{node_num}_{self.log_file}"
+            )
+        self.close()
+        os.rename(self.log_full_path, log_rotate_path)
+        self.open()
+        self.write(f"{console_name} v{version} file {self.log_file} rotated")
+        self.rotate_flag = False
+
+
 freqs = [DailyMinMaxCollection() for _ in range(3)]
 ampls = [DailyMinMaxCollection() for _ in range(3)]
 mag = [DailyMinMaxCollection() for _ in range(3)]
@@ -109,6 +145,8 @@ gps_data = {
 exited = False
 mode = MODE_DAILY
 datactrlr = None
+node_num = ""
+
 
 def saddstr(stdscr, y, x, string):
     max_y, max_x = stdscr.getmaxyx()
@@ -124,13 +162,9 @@ def data_reader():
                 break
             try:
                 last_data = parse_json(line)
-            except Exception as e:
-                log.write("BEGIN datar exception\n")
-                log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "\n")
-                log.write(str(e) + "\n")
-                log.write(line.replace("\0", "") + "\n")
-                log.write("END datar exception\n")
-                log.flush()
+            except Exception as ex:
+                log.write("Exception in data_reader: " + str(ex))
+                log.write(line.replace("\0", ""))
 
 
 def count_sats(data):
@@ -141,6 +175,13 @@ def count_sats(data):
         if isinstance(value, int):
             nsats += 1
     return nsats
+
+
+def is_process_running(process_name):
+    for process in psutil.process_iter(["pid", "name"]):
+        if process.info["name"] == process_name:
+            return True
+    return False
 
 
 def gps_reader():
@@ -201,7 +242,9 @@ def gps_reader():
                             sat_count_flag = False
                     elif "D" in gps_data["fix"] and parsed_data.msgID == "ZDA":
                         try:
-                            gps_data["time"] = parsed_data.time
+                            gps_data["time"] = str(parsed_data.time)
+                            if gps_data["time"] == log.rotate_time:
+                                log.rotate_flag = True
                         except:
                             gps_data["time"] = "00:00:00"
                         try:
@@ -218,13 +261,9 @@ def gps_reader():
                             gps_data["day"] = "00"
                     else:
                         sat_count_flag = True
-                except Exception as e:
-                    log.write("BEGIN gpsr exception\n")
-                    log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + "\n")
-                    log.write(f'"{parsed_data}"\n')
-                    log.write(str(e) + "\n")
-                    log.write("END gpsr exception\n")
-                    log.flush()
+                except Exception as ex:
+                    log.write("Exception in gps_reader: " + str(ex))
+                    log.write(f'"{parsed_data=}"')
 
     else:
         # TEST: need more testing
@@ -267,13 +306,12 @@ def parse_json(line):
         return data
     except Exception as ex:
         if len(line) > 10:
-            log.write("Exception in parse_json: " + str(ex) + "\n")
-            log.write(repr(line) + "\n\n")
+            log.write("Exception in parse_json: " + str(ex))
+            log.write(repr(line) + "\n")
             regex_pattern = r"(-?nan|-?inf|null)"
             replacement = "0.0"
 
             line = re.sub(regex_pattern, replacement, line)
-            log.flush()
             return json.loads(
                 line,
                 parse_float=lambda x: x,
@@ -285,10 +323,10 @@ def parse_json(line):
 
 
 def print_title(stdscr):
+    global node_num
     saddstr(stdscr, 0, 22, f"{console_name} {version}")
     saddstr(stdscr, 1, 24, "Node: ")
-    with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
-        saddstr(stdscr, 1, 30, file.readline().strip())
+    saddstr(stdscr, 1, 30, node_num)
     nextrow = 2
     return nextrow
 
@@ -321,10 +359,9 @@ def log_versions(data):
     try:
         verlog = open("/home/pi/PSWS/Sstat/versions.stat", "w")
         verlog.write(ver_string + "\n")
-        verlog.close
+        verlog.close()
     except Exception as ex:
-        log.write("Exception in log_versions: " + str(ex) + "\n")
-        log.flush()
+        log.write("Exception in log_versions: " + str(ex))
 
 
 def print_datetime_widget(stdscr, row):
@@ -445,7 +482,7 @@ def print_freq(stdscr, row):
     else:
         saddstr(stdscr, row + 2, 0, "MAX 1 hr ")
         saddstr(stdscr, row + 4, 0, "MIN 1 hr ")
-    # log.write("\n")
+    # log.write("")
     # log.write(freqs.__repr__())
 
 
@@ -495,12 +532,14 @@ def print_mag(stdscr, row):
         saddstr(stdscr, row + 3, 0, "MAX 1 hr ")
         saddstr(stdscr, row + 5, 0, "MIN 1 hr ")
 
+
 def print_status(stdscr, row, data):
     stat = str(data["status"]).strip("[]")
     if stat != "":
         saddstr(stdscr, row, 6, stat)
     else:
         saddstr(stdscr, row, 6, "                                                        ")
+
 
 def stop_datactrlr():
     global datactrlr
@@ -512,6 +551,7 @@ def stop_datactrlr():
         datactrlr.stdin.flush()
         time.sleep(0.1)
         datactrlr = None
+
 
 def check_restart(stdscr, position):
     if os.path.exists(restart_path):
@@ -526,6 +566,7 @@ def check_restart(stdscr, position):
         return True
 
     return False
+
 
 def update_ui(stdscr):
     global mode, exited, datactrlr
@@ -548,8 +589,7 @@ def update_ui(stdscr):
     program_name = "datactrlr"
     while datactrlr is None:
         if is_process_running(program_name):
-            log.write(f"Terminating running {program_name}\n")
-            log.flush()
+            log.write(f"Terminating running {program_name}")
             kproc = subprocess.Popen( ["sudo", "killall", program_name], stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL)
             time.sleep(2.0)
         else:
@@ -571,8 +611,7 @@ def update_ui(stdscr):
                 )
                 stdscr.refresh()
 
-                log.write(f"Starting {program_name}\n")
-                log.flush()
+                log.write(f"Starting {program_name}")
                 datactrlr = subprocess.Popen(
                     ["sudo", "/home/pi/G2User/datactrlr", "-l"],
                     stdin=PIPE,
@@ -605,6 +644,8 @@ def update_ui(stdscr):
                 if log_vers is True:
                     log_versions(last_data)
                     log_vers = False
+                if log.rotate_flag is True:
+                    log.rotate()
                 print_version(stdscr, end_of_title, last_data)
                 print_gps_time(stdscr, end_of_version)
                 print_gps(stdscr, end_of_datetime)
@@ -618,6 +659,7 @@ def update_ui(stdscr):
 
                 char = stdscr.getch()
                 if char != curses.ERR and char == 24:  # Detected Ctrl-x
+                    log.write("Ctrl-x detected")
                     if datactrlr is not None:
                         saddstr(
                             stdscr,
@@ -660,10 +702,14 @@ def update_ui(stdscr):
 
 def main(stdscr):
 
+    global node_num
+
     atexit.register(stop_datactrlr)
 
-    log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + f"{console_name} v{version} started\n")
-    log.flush()
+    log.write(f"{console_name} v{version} started")
+
+    with open("/home/pi/PSWS/Sinfo/NodeNum.txt") as file:
+        node_num = file.readline().strip()
 
     curses.curs_set(0)  # hide cursor
     curses.halfdelay(5)
@@ -672,9 +718,8 @@ def main(stdscr):
     )  # (color pair #, foreground, background)
     stdscr.attron(curses.color_pair(1))  # Set default color pair
     exit_code = update_ui(stdscr)
-    log.write("Exit code is " + str(exit_code) + "\n")
-    log.write(datetime.now().strftime("%m/%d/%Y %H:%M:%S") + " " + f"{console_name} v{version} ended\n")
-    log.flush()
+    log.write(f"Exit code is {exit_code}")
+    log.write(f"{console_name} v{version} ended\n")
     log.close()
     sys.exit(exit_code)
 
@@ -697,11 +742,9 @@ if __name__ == "__main__":
 
     pipe_path = "/home/pi/PSWS/Sstat/datamon.fifo"
     restart_path = "/home/pi/PSWS/Scmd/restartcon"
-    log_path = "/home/pi/G2DATA/Slogs/"
-    log_file = "console.log"
-    if not os.path.exists(log_path):
-        os.makedirs(log_path)
-    log = open(os.path.join(log_path, log_file), "a")
+
+    log = console_log("/home/pi/G2DATA/Slogs/", "console.log")
+    log.open()
 
     curses.wrapper(main)
 

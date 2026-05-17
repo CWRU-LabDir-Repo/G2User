@@ -14,18 +14,17 @@ DATE=`date +%Y-%m-%d --date="$DDIFF"`
 NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
 PATTERN=${DATE}T000000Z_${NODE}
 
-# gzip daily dc log file for long term storage
+# Compress the daily log files for short term storage in Slogs.
 /usr/bin/gzip /home/pi/G2DATA/Slogs/${PATTERN}_DC.log
+/usr/bin/gzip /home/pi/G2DATA/Slogs/${PATTERN}_console.log
+/usr/bin/gzip /home/pi/G2DATA/Slogs/${PATTERN}_magdata.log
 
-# copy console.log to xfer directory and rename
-cp -p /home/pi/G2DATA/Slogs/console.log ${PATTERN}_console.log
+# Compress the daily data files copied to the Sxfer directory by files2xfer.py.
+/usr/bin/zip -m ${PATTERN} ${PATTERN}*.csv
 
-# zip all daily csv files for transfer
-time /usr/bin/zip -m ${PATTERN} ${PATTERN}*.csv
-
-# zip all daily log files for transfer
-# compfiles.stat will be truncated because we are currently redirecting to it.
-time /usr/bin/zip ${PATTERN}_logs ${PATTERN}*.log /home/pi/PSWS/Sstat/*.stat
+# Compress the daily log files copied to the Sxfer directory by files2xfer.py.
+# Note: compfiles.stat will be truncated because we are currently redirecting to it.
+/usr/bin/zip ${PATTERN}_logs ${PATTERN}*.log /home/pi/PSWS/Sstat/*.stat
 /usr/bin/rm -f ${PATTERN}*.log
 
 echo Compress files script ended
