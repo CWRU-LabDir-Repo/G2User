@@ -91,12 +91,11 @@ def patch_file(path_name, file_name, versions):
                     for line in lines:
                         file2.write(line)
                 file2.close()
+                shutil.chown(outfile, user='pi', group='pi')
                 os.rename(outfile, infile)
-                shutil.chown(infile, user='pi', group='pi')
 
     except Exception as ex:
         print("Exception in patch_file(): " + str(ex))
-        raise
 
 
 # main

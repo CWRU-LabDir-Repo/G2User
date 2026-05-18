@@ -9,6 +9,6 @@ then
     echo "Editing ${CONF}"
     sed -i -e 's/XR2/XR1/g' ${CONF}
 else
-    echo "Debug level OK"
+    echo -n "Debug level OK: "; grep XR1 $CONF
 fi
 

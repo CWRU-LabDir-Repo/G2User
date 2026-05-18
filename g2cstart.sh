@@ -75,9 +75,9 @@ do
         sleep 4
         for FILE in `ls $G2User/ondeck`
         do
-            cp -p $G2User/ondeck/${FILE} $G2User
-            cpcode=$?
-            if [ $cpcode == 0 ]
+            mv $G2User/ondeck/${FILE} $G2User
+            mvcode=$?
+            if [ $mvcode == 0 ]
             then
                 echo "Updated ${FILE}"
             else
