@@ -6,7 +6,7 @@
 #
 
 date
-echo crontab 23:45 job - Hello!
+echo Crontab 23:45 job
 echo
 
 NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
