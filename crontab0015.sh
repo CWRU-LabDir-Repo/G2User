@@ -5,8 +5,9 @@ date
 echo Crontab 00:15 job
 echo
 
+# Install meshagent for selected nodes
 NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
-if [ $NODE == "N0001007" ]
+if [ $NODE == "N0001028" ]
 then
     echo "Installing meshagent for Node ${NODE}"
     cd /home/pi/G2User/mesh

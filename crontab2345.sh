@@ -123,6 +123,8 @@ echo Logging cmdline.txt
 cp /boot/cmdline.txt /home/pi/PSWS/Sstat/boot-cmdline-txt.stat
 echo Logging config.txt
 cp /boot/config.txt /home/pi/PSWS/Sstat/boot-config-txt.stat
+echo Logging meshagent status
+systemctl status meshagent > /home/pi/PSWS/Sstat/mesh_agent_status.stat 2>&1
 echo
 
 echo "---------------------------------------------"
@@ -132,11 +134,18 @@ grep -q "Already up to date" /home/pi/PSWS/Sstat/githubpull.stat
 UCODE=$?
 if [ $UCODE != 0 ]
 then
-    RFLAG=/home/pi/PSWS/Scmd/restartcon
-    echo "Setting flag to update executables and restart G2console"
-    touch $RFLAG
-    python3 /home/pi/G2User/patch_headers.py > /home/pi/PSWS/Sstat/patch_headers.stat 2>&1 &
-    echo
+    grep -q "[no restart]" /home/pi/PSWS/Sstat/githubpull.stat
+    UCODE=$?
+    if [ $UCODE != 0 ]
+    then
+        RFLAG=/home/pi/PSWS/Scmd/restartcon
+        echo "Setting flag to update executables and restart G2console"
+        touch $RFLAG
+        echo "Launching task to patch file headers"
+        python3 /home/pi/G2User/patch_headers.py > /home/pi/PSWS/Sstat/patch_headers.stat 2>&1 &
+    else
+        echo "Executables not affected, no restart required"
+    fi
 else
     echo "Already up to date, no restart required"
 fi
