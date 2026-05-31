@@ -63,7 +63,7 @@ def patch_lines(lines, versions):
                     patched = True
                     break
         if not found:
-            print(f"{label} not found")
+            print(f"{label} not found - adding current: {ver}")
             # re-enumerate the list and find the first line containing "Version"
             for i, line in enumerate(lines):
                 if "Version" in line:
@@ -77,7 +77,7 @@ def patch_lines(lines, versions):
 def patch_file(path_name, file_name, versions):
     try:
         infile = os.path.join(path_name, file_name)
-        print(f"Patching file {infile}")
+        print(f"Reading file {infile}")
         with open(infile, 'r') as file:
             lines = file.readlines()
             patched = patch_lines(lines, versions)
