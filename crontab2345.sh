@@ -120,9 +120,9 @@ crontab -u pi -l > /home/pi/PSWS/Sstat/crontab-pi.stat 2>&1
 echo Logging root user crontab
 crontab -l > /home/pi/PSWS/Sstat/crontab-root.stat 2>&1
 echo Logging cmdline.txt
-cp /boot/cmdline.txt /home/pi/PSWS/Sstat/boot-cmdline-txt.stat
+cp --remove-destination --no-preserve=mode /boot/cmdline.txt /home/pi/PSWS/Sstat/boot-cmdline-txt.stat
 echo Logging config.txt
-cp /boot/config.txt /home/pi/PSWS/Sstat/boot-config-txt.stat
+cp --remove-destination --no-preserve=mode /boot/config.txt /home/pi/PSWS/Sstat/boot-config-txt.stat
 echo Logging meshagent status
 systemctl status meshagent > /home/pi/PSWS/Sstat/mesh_agent_status.stat 2>&1
 echo
