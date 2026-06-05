@@ -5,5 +5,6 @@ echo 'Manual update of /G2User/ from cmd line'
 git fetch
 git reset --hard HEAD
 git merge '@{u}'
+git restore-mtime
 ls -al ondeck/
-sudo mv ondeck/* .
+sudo mv -v ondeck/* .
