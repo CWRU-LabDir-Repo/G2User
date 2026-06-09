@@ -71,7 +71,7 @@ cat /home/pi/.config/lxsession/LXDE-pi/autostart
 echo
 
 echo "---------------------------------------------"
-echo G2DATA file info:
+echo G2DATA link info:
 echo "---------------------------------------------"
 file /home/pi/G2DATA
 echo
