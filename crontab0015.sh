@@ -8,7 +8,13 @@ echo
 NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
 
 # Install meshagent for selected nodes
-if [ $NODE == "N0001006" ]
+if [ $NODE == "N0001013" ]
+then
+    echo "Installing meshagent for Node ${NODE}"
+    /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
+fi
+
+if [ $NODE == "N0001014" ]
 then
     echo "Installing meshagent for Node ${NODE}"
     /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
