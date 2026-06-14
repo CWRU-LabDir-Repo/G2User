@@ -8,23 +8,35 @@ echo
 NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
 
 # Install meshagent for selected nodes
-if [ $NODE == "N0001013" ]
+if [ $NODE == "N0001017" ]
 then
     echo "Installing meshagent for Node ${NODE}"
     /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
 fi
 
-if [ $NODE == "N0001014" ]
+if [ $NODE == "N0001019" ]
 then
     echo "Installing meshagent for Node ${NODE}"
     /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
 fi
 
-#if [ $NODE == "N0001031" ]
-#then
-#    echo "Installing meshagent for Node ${NODE}"
-#    /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
-#fi
+if [ $NODE == "N0001023" ]
+then
+    echo "Installing meshagent for Node ${NODE}"
+    /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
+fi
+
+if [ $NODE == "N0001024" ]
+then
+    echo "Installing meshagent for Node ${NODE}"
+    /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
+fi
+
+if [ $NODE == "N0001025" ]
+then
+    echo "Installing meshagent for Node ${NODE}"
+    /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
+fi
 
 # Start meshagent for selected nodes
 #if [ $NODE == "N0001022" ]
