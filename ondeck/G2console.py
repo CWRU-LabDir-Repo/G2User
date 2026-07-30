@@ -17,7 +17,7 @@ from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
 console_name = "Grape2 Console"
-version = "12.18"
+version = "12.19"
 
 # Constants for modes
 MODE_DAILY = 0
@@ -115,14 +115,15 @@ class console_log:
             self.fd.flush()
 
     def rotate(self):
-        log_rotate_path = os.path.join(
-            self.log_path,
-            datetime.now().strftime("%Y-%m-%dT000000Z_") + f"{node_num}_{self.log_file}"
-            )
-        self.close()
-        os.rename(self.log_full_path, log_rotate_path)
-        self.open()
-        self.write(f"{console_name} v{version} file {self.log_file} rotated")
+        if os.path.exists(self.log_full_path):
+            log_rotate_path = os.path.join(
+                self.log_path,
+                datetime.now().strftime("%Y-%m-%dT000000Z_") + f"{node_num}_{self.log_file}"
+                )
+            self.close()
+            os.rename(self.log_full_path, log_rotate_path)
+            self.open()
+            self.write(f"{console_name} v{version} file {self.log_file} rotated")
         self.rotate_flag = False
 
 
