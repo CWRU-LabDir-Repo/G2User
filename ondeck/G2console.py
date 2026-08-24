@@ -16,12 +16,14 @@ from serial import Serial
 from pynmeagps import NMEAReader, NMEAMessage
 from gpsdclient import GPSDClient
 
+# Constants
 console_name = "Grape2 Console"
-version = "12.19"
-
-# Constants for modes
+version = "12.20"
 MODE_DAILY = 0
 MODE_HOURLY = 1
+TEXT_GREEN = 1
+TEXT_YELLOW= 2
+TEXT_YELLOW_BLUE = 3
 
 
 class DailyMinMaxCollection:
@@ -131,6 +133,7 @@ freqs = [DailyMinMaxCollection() for _ in range(3)]
 ampls = [DailyMinMaxCollection() for _ in range(3)]
 mag = [DailyMinMaxCollection() for _ in range(3)]
 last_data = ""
+last_nstat = 0
 gps_data = {
     "time": "00:00:00",
     "day": "00",
@@ -153,6 +156,12 @@ def saddstr(stdscr, y, x, string):
     max_y, max_x = stdscr.getmaxyx()
     if 0 <= y < max_y and 0 <= x < max_x:
         stdscr.addstr(y, x, string)
+
+
+def saddstr_color(stdscr, y, x, string, pair):
+    max_y, max_x = stdscr.getmaxyx()
+    if 0 <= y < max_y and 0 <= x < max_x:
+        stdscr.addstr(y, x, string, curses.color_pair(pair) | curses.A_BOLD)
 
 
 def data_reader():
@@ -535,22 +544,39 @@ def print_mag(stdscr, row):
 
 
 def print_status(stdscr, row, data):
-    stat = str(data["status"]).strip("[]")
-    if stat != "":
-        saddstr(stdscr, row, 6, stat)
-    else:
-        saddstr(stdscr, row, 6, "                                                        ")
+    global last_nstat
+    for i in range(last_nstat):
+        saddstr(stdscr, row + i, 6, " ".ljust(53))
+    last_nstat = 0;
+    for i, status in enumerate(data["status"]):
+        level = int(status["level"])
+        if level == 1:
+            color = TEXT_YELLOW
+        elif level == 2:
+            color = TEXT_YELLOW_BLUE
+        elif level == 3:
+            color = TEXT_YELLOW_BLUE
+        else:
+            color = TEXT_GREEN
+        saddstr_color(stdscr, row + i, 6, status["text"].ljust(53), color)
+        last_nstat += 1
 
 
 def stop_datactrlr():
     global datactrlr
     if datactrlr is not None:
-        datactrlr.stdin.write(b"\x1b")
-        datactrlr.stdin.flush()
-        time.sleep(0.1)
-        datactrlr.stdin.write(b"q\n")
-        datactrlr.stdin.flush()
-        time.sleep(0.1)
+        # The datactrlr subprocess may have terminated due to a signal from G2console such as ctrl-c,
+        # in which case its stdio pipes have closed. So put these stdin writes inside a try-block
+        # and ignore any exceptions.
+        try:
+            datactrlr.stdin.write(b"\x1b")
+            datactrlr.stdin.flush()
+            time.sleep(0.1)
+            datactrlr.stdin.write(b"q\n")
+            datactrlr.stdin.flush()
+            time.sleep(0.1)
+        except:
+            pass
         datactrlr = None
 
 
@@ -655,7 +681,7 @@ def update_ui(stdscr):
                 print_freq(stdscr, end_of_ampl)
                 print_temp(stdscr, end_of_freq, last_data)
                 print_mag(stdscr, end_of_temp)
-                #print_status(stdscr, end_of_mag + 3, last_data)
+                print_status(stdscr, end_of_mag + 3, last_data)
                 stdscr.refresh()
 
                 char = stdscr.getch()
@@ -714,10 +740,11 @@ def main(stdscr):
 
     curses.curs_set(0)  # hide cursor
     curses.halfdelay(5)
-    curses.init_pair(
-        1, curses.COLOR_GREEN, curses.COLOR_BLACK
-    )  # (color pair #, foreground, background)
-    stdscr.attron(curses.color_pair(1))  # Set default color pair
+    # (color pair #, foreground, background)
+    curses.init_pair(TEXT_GREEN, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(TEXT_YELLOW, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+    curses.init_pair(TEXT_YELLOW_BLUE, curses.COLOR_YELLOW, curses.COLOR_BLUE)
+    stdscr.attron(curses.color_pair(TEXT_GREEN))  # Set default color pair
     exit_code = update_ui(stdscr)
     log.write(f"Exit code is {exit_code}")
     log.write(f"{console_name} v{version} ended\n")

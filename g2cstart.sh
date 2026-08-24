@@ -34,6 +34,7 @@ else
             if [ "$TARGET" == "$G2MOUNT" ]
             then
                 MOUNTOK=true
+                sleep 1
                 break
             else
                 echo "Error: Link target $TARGET is not $G2MOUNT"
