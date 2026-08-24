@@ -134,7 +134,7 @@ grep -q "Already up to date" /home/pi/PSWS/Sstat/githubpull.stat
 UCODE=$?
 if [ $UCODE != 0 ]
 then
-    grep -q "\[no restart\]" /home/pi/PSWS/Sstat/githubpull.stat
+    git log -1 | grep "\[no restart\]"
     UCODE=$?
     if [ $UCODE != 0 ]
     then
