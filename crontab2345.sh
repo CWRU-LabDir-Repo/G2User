@@ -134,6 +134,7 @@ grep -q "Already up to date" /home/pi/PSWS/Sstat/githubpull.stat
 UCODE=$?
 if [ $UCODE != 0 ]
 then
+    cd /home/pi/G2User
     git log -1 | grep "\[no restart\]"
     UCODE=$?
     if [ $UCODE != 0 ]
@@ -144,7 +145,7 @@ then
         echo "Launching task to patch file headers"
         python3 /home/pi/G2User/patch_headers.py > /home/pi/PSWS/Sstat/patch_headers.stat 2>&1 &
     else
-        echo "Executables not affected, no restart required"
+        echo "G2console will not be restarted"
     fi
 else
     echo "Already up to date, no restart required"
