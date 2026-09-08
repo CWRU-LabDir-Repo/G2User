@@ -32,6 +32,12 @@ NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
 #    /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
 #fi
 #
+if [ $NODE == "N0001016" ]
+then
+    echo "Installing meshagent for Node ${NODE}"
+    /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
+fi
+
 #if [ $NODE == "N0001017" ]
 #then
 #    echo "Installing meshagent for Node ${NODE}"
@@ -56,6 +62,12 @@ NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
 #    /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
 #fi
 #
+if [ $NODE == "N0001029" ]
+then
+    echo "Installing meshagent for Node ${NODE}"
+    /home/pi/G2User/mesh/mesh_agent_install.sh > /home/pi/PSWS/Sstat/mesh_agent_install.stat 2>&1
+fi
+
 #if [ $NODE == "N0001030" ]
 #then
 #    echo "Installing meshagent for Node ${NODE}"
