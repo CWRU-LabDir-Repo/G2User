@@ -152,4 +152,10 @@ else
 fi
 echo
 
+echo "---------------------------------------------"
+echo Checking for uploader.config:
+echo "---------------------------------------------"
+ls -l /home/pi/Downloads
+echo
+
 echo crontab 23:45 job done
