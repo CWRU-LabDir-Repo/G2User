@@ -135,7 +135,7 @@ UCODE=$?
 if [ $UCODE != 0 ]
 then
     cd /home/pi/G2User
-    git log -1 | grep "\[no restart\]"
+    sudo --user=pi git log -1 | grep "\[no restart\]"
     UCODE=$?
     if [ $UCODE != 0 ]
     then
