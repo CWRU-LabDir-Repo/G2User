@@ -48,7 +48,7 @@ def DR_pending():
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M')
 
 def log_time():
-    return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
+    return datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
 
 def upload_file(source_path, obs, instrumentID, targetDir, triggerPfx):
     if instrumentID != "" and triggerPfx != "":
@@ -72,9 +72,9 @@ def upload_file(source_path, obs, instrumentID, targetDir, triggerPfx):
         + "-u " + theStationID + "," + theToken + " " \
         + "sftp://" + central_host + " "
 
-#    print('Upload command = "' + command + '"')
+#    print('Upload command = "' + command + '"', flush=True)
 #    return 0
-    print("Starting upload...")
+    print("Starting upload...", flush=True)
     return os.system(command)
 
 def upload_file_set(source_path, template, instrumentID, targetDir, triggerPfx):
@@ -85,18 +85,18 @@ def upload_file_set(source_path, template, instrumentID, targetDir, triggerPfx):
     for file_path in files:
         file_name = os.path.basename(file_path)
 
-        print("Will attempt to upload observation " + file_name)
+        print("Will attempt to upload observation " + file_name, flush=True)
         scode = upload_file(source_path, file_name, instrumentID, targetDir, triggerPfx)
         if scode == 0:
             n_ok += 1
-            print("Upload succeeded")
+            print("Upload succeeded", flush=True)
             # Remove file if upload succeeded
             os.remove(source_path + file_name)
         else:
             n_err += 1
-            print("Upload failed")
+            print("Upload failed", flush=True)
 
-print("Upload started: " + log_time())
+print("Upload started: " + log_time(), flush=True)
 
 # Read settings
 parser = configparser.ConfigParser(allow_no_value=True)
@@ -140,8 +140,8 @@ if mag_present:
 upload_file_set(source_path, "*logs.zip", "", "logs", "")
 
 # Print stats
-print("Number of file uploads succeeded: " + str(n_ok) + ", failed: " + str(n_err))
+print("Number of file uploads succeeded: " + str(n_ok) + ", failed: " + str(n_err), flush=True)
 if n_err > 0:
-	print("Failed uploads will be tried again tomorrow")
-print("Upload ended: " + log_time())
+    print("Failed uploads will be tried again tomorrow", flush=True)
+print("Upload ended: " + log_time(), flush=True)
 

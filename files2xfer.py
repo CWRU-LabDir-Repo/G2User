@@ -16,6 +16,10 @@ from datetime import datetime, timedelta
 radio_files = []
 
 
+def log_time():
+    return datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+
+
 def copy_radio_files(date_str, dest_dir):
     global radio_files
     directories = [
@@ -91,5 +95,8 @@ def write_filenames():
 
 
 if __name__ == "__main__":
+    print("File copy started: " + log_time())
     copy_yesterday_files()
     write_filenames()
+    print("File copy ended: " + log_time())
+
