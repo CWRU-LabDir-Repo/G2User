@@ -34,3 +34,11 @@ NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
 #    mv -v magtmp _magtmp
 #    touch restartcon
 #fi
+
+# Start mesh agent on selected nodes
+if [ $NODE == "N0001021" ]
+then
+    echo "Starting mesh agent on Node ${NODE}"
+    systemctl start meshagent
+fi
+
