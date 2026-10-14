@@ -36,7 +36,7 @@ NODE=`cat /home/pi/PSWS/Sinfo/NodeNum.txt`
 #fi
 
 # Start mesh agent on selected nodes
-if [ $NODE == "N0001021" ]
+if [ $NODE == "N0001006" ]
 then
     echo "Starting mesh agent on Node ${NODE}"
     systemctl start meshagent
