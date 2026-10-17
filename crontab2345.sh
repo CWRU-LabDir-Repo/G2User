@@ -158,4 +158,10 @@ echo "---------------------------------------------"
 ls -l /home/pi/Downloads
 echo
 
+echo "---------------------------------------------"
+echo Checking for leftover zip files:
+echo "---------------------------------------------"
+ls -l /home/pi/G2DATA/Sxfer/*.zip
+echo
+
 echo crontab 23:45 job done
