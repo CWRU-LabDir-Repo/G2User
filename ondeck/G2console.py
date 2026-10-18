@@ -18,12 +18,15 @@ from gpsdclient import GPSDClient
 
 # Constants
 console_name = "Grape2 Console"
-version = "12.20"
+version = "12.21"
 MODE_DAILY = 0
 MODE_HOURLY = 1
 TEXT_GREEN = 1
 TEXT_YELLOW= 2
 TEXT_YELLOW_BLUE = 3
+EXIT_SUCCESS = 0
+EXIT_RESTART_RUN = 5
+EXIT_RESTART_STBY = 6
 
 
 class DailyMinMaxCollection:
@@ -547,7 +550,7 @@ def print_status(stdscr, row, data):
     global last_nstat
     for i in range(last_nstat):
         saddstr(stdscr, row + i, 6, " ".ljust(53))
-    last_nstat = 0;
+    last_nstat = 0
     for i, status in enumerate(data["status"]):
         level = int(status["level"])
         if level == 1:
@@ -589,7 +592,8 @@ def check_restart(stdscr, position):
             "Restarting the Console for updates...              ",
         )
         stdscr.refresh()
-        os.remove(restart_path)
+        rproc = subprocess.Popen(["sudo", "/usr/bin/rm", "-f", restart_path], stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL)
+        log.write("Console restart triggered");
         return True
 
     return False
@@ -612,12 +616,12 @@ def update_ui(stdscr):
         stdscr, end_of_mag + 2, 6, "<ctrl-p> = toggle for 1Hr/24Hr Min/Max            "
     )
 
-    exit_code = 0
+    exit_code = EXIT_SUCCESS
     program_name = "datactrlr"
     while datactrlr is None:
         if is_process_running(program_name):
             log.write(f"Terminating running {program_name}")
-            kproc = subprocess.Popen( ["sudo", "killall", program_name], stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL)
+            kproc = subprocess.Popen( ["sudo", "/usr/bin/killall", program_name], stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL)
             time.sleep(2.0)
         else:
             saddstr(
@@ -651,7 +655,7 @@ def update_ui(stdscr):
                 time.sleep(0.1)
             elif check_restart(stdscr, end_of_mag + 1):
                 exited = True
-                exit_code = 6
+                exit_code = EXIT_RESTART_STBY   # restart in standby mode
                 return exit_code
 
     saddstr(
@@ -709,7 +713,7 @@ def update_ui(stdscr):
                     mode = MODE_DAILY if mode == MODE_HOURLY else MODE_HOURLY
                 if check_restart(stdscr, end_of_mag + 1):
                     stop_datactrlr()
-                    exit_code = 5
+                    exit_code = EXIT_RESTART_RUN   # restart in run mode
                     break
                 stdscr.refresh()
     except KeyboardInterrupt:
@@ -746,7 +750,7 @@ def main(stdscr):
     curses.init_pair(TEXT_YELLOW_BLUE, curses.COLOR_YELLOW, curses.COLOR_BLUE)
     stdscr.attron(curses.color_pair(TEXT_GREEN))  # Set default color pair
     exit_code = update_ui(stdscr)
-    log.write(f"Exit code is {exit_code}")
+    log.write(f"Exiting with code {exit_code}")
     log.write(f"{console_name} v{version} ended\n")
     log.close()
     sys.exit(exit_code)
