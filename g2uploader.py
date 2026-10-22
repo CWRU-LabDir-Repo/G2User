@@ -39,10 +39,23 @@ from datetime import datetime, timezone
 import time
 import configparser
 import glob
+from pathlib import Path
 
 # Counters
 n_ok = 0
 n_err = 0
+
+# lftp log file
+lftp_log = "/home/pi/PSWS/Sstat/lftp.stat"
+
+# lftp timeout rules
+timeout = 10        # Seconds to wait for network activity
+max_retries = 3     # Total retries before giving up
+reconnect_base = 5  # Seconds to wait between retries
+
+# Note: sftp:connect-program forces the timeout rules onto the underlying SSH binary
+timeout_rules = f"set net:timeout {timeout}; set net:max-retries {max_retries}; set net:reconnect-interval-base {reconnect_base}; "
+timeout_rules += f"set sftp:connect-program \"ssh -a -x -o ConnectTimeout={timeout} -o ConnectionAttempts={max_retries}\"; "
 
 def DR_pending():
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M')
@@ -52,25 +65,28 @@ def log_time():
 
 def upload_file(source_path, obs, instrumentID, targetDir, triggerPfx):
     if instrumentID != "" and triggerPfx != "":
-        triggerDir = triggerPfx + obs + "_#" + instrumentID + "_#" + DR_pending()
+        triggerDir = f"{triggerPfx}{obs}_#{instrumentID}_#" + DR_pending()
     else:
         triggerDir = ""
     command = "lftp " \
-        + "-e '" \
-        + "set net:limit-rate " + throttle + "; " \
-        + "cd " + targetDir + "; " \
-        + "put " + source_path + obs + "; " \
-        + "chmod 775 " + obs + "; "
+        + f"-e '" \
+        + f"set cmd:fail-exit yes; " \
+        + f"{timeout_rules}" \
+        + f"set net:limit-rate {throttle}; " \
+        + f"cd {targetDir}; " \
+        + f"put {source_path}{obs}; " \
+        + f"chmod 775 {obs}; "
     if triggerDir != "":
         command = command \
-        + "cd .. ; " \
-        + "mkdir " + triggerDir + "; " \
-        + "chmod 775 " + triggerDir + "; "
+        + f"cd .. ; " \
+        + f"mkdir -f {triggerDir}; " \
+        + f"chmod 775 {triggerDir}; "
     command = command \
-        + "exit" \
-        + "' " \
-        + "-u " + theStationID + "," + theToken + " " \
-        + "sftp://" + central_host + " "
+        + f"exit" \
+        + f"' " \
+        + f"-u {theStationID},{theToken} " \
+        + f"sftp://{central_host} " \
+        + f">> {lftp_log} 2>&1"
 
 #    print('Upload command = "' + command + '"', flush=True)
 #    return 0
@@ -97,6 +113,11 @@ def upload_file_set(source_path, template, instrumentID, targetDir, triggerPfx):
             print("Upload failed", flush=True)
 
 print("Upload started: " + log_time(), flush=True)
+
+try:
+    os.remove(lftp_log)
+except FileNotFoundError:
+    pass
 
 # Read settings
 parser = configparser.ConfigParser(allow_no_value=True)
